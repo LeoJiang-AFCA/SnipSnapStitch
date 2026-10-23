@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'">
+<title>Settings</title>
+<link rel="stylesheet" href="settings.css">
+</head>
+<body>
+<h1>Settings</h1>
+
+<section>
+  <h2>Global hotkeys</h2>
+  <p class="hint">Click a field and press the key combination. Backspace clears.</p>
+  <label>Snip area <input class="hotkey" data-key="hotkeys.region" readonly></label>
+  <label>Record video <input class="hotkey" data-key="hotkeys.record" readonly></label>
+  <label>Full screen <input class="hotkey" data-key="hotkeys.fullscreen" readonly></label>
+</section>
+
+<section>
+  <h2>General</h2>
+  <label class="row"><input type="checkbox" id="launchAtLogin"> Start with Windows (runs quietly in the tray, so captures are instant)</label>
+  <label class="row"><input type="checkbox" id="replacePrintScreen"> Use the Print Screen key for SnipSnapStitch instead of the Windows Snipping Tool (needs the app running in the tray)</label>
+</section>
+
+<section>
+  <h2>After capture</h2>
+  <label>Action
+    <select id="afterCapture">
+      <option value="editor">Open in editor</option>
+      <option value="library">Show in library</option>
+      <option value="clipboard">Copy to clipboard only</option>
+    </select>
+  </label>
+  <label class="row"><input type="checkbox" id="copyToClipboard"> Always copy to clipboard</label>
+  <label class="row"><input type="checkbox" id="captureCursor"> Include mouse cursor</label>
+  <label>Capture delay (seconds) <input type="number" id="delaySeconds" min="0" max="60" step="1"></label>
+</section>
+
+<section>
+  <h2>Save folder</h2>
+  <div class="folder">
+    <input id="saveFolder" readonly placeholder="Default (app library only)">
+    <button id="browse">Browse…</button>
+    <button id="clearFolder">Clear</button>
+  </div>
+</section>
+
+<footer>
+  <span id="status"></span>
+  <button id="close">Close</button>
+</footer>
+<script src="settings.js"></script>
+</body>
+</html>

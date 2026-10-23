@@ -1,0 +1,29 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+release/
+out/
+coverage/
+
+# Logs / OS / editor
+*.log
+npm-debug.log*
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/*
+!.vscode/extensions.json
+.idea/
+
+# Local environment
+.env
+.env.*
+*.pem
+*.pfx
+*.p12
+
+# Test scratch profiles
+tmp/
+.tmp/

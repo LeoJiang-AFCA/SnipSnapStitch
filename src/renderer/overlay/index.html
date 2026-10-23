@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; script-src 'self'; img-src 'self' data:">
+  <title>SnipSnapStitch Capture</title>
+  <link rel="stylesheet" href="overlay.css">
+</head>
+<body>
+  <canvas id="shot"></canvas>
+  <div id="dim"></div>
+  <div id="hl" hidden><span id="hl-label"></span></div>
+  <div id="vline" hidden></div>
+  <div id="hline" hidden></div>
+  <div id="sel" hidden>
+    <div class="handle" data-h="nw"></div><div class="handle" data-h="n"></div><div class="handle" data-h="ne"></div>
+    <div class="handle" data-h="w"></div><div class="handle" data-h="e"></div>
+    <div class="handle" data-h="sw"></div><div class="handle" data-h="s"></div><div class="handle" data-h="se"></div>
+  </div>
+  <div id="size" hidden></div>
+  <div id="toolbar" hidden>
+    <button id="btn-ok" title="Capture (Enter)">&#10003; Capture</button>
+    <button id="btn-cancel" title="Cancel (Esc)">&#10005;</button>
+  </div>
+  <div id="loupe" hidden>
+    <canvas id="loupe-canvas" width="11" height="11"></canvas>
+    <div id="loupe-info"><span id="swatch"></span><span id="loupe-text"></span></div>
+  </div>
+  <div id="hint" hidden></div>
+  <div id="countdown" hidden></div>
+  <script src="overlay.js"></script>
+</body>
+</html>

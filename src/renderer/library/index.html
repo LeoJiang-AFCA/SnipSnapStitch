@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>SnipSnapStitch Library</title>
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' sss: file: data: blob:; media-src 'self' sss: file: blob:; connect-src 'self' sss:">
+  <link rel="stylesheet" href="library.css">
+</head>
+<body>
+  <header class="toolbar" id="captureBar">
+    <div class="brand"><img class="logo" src="../../../assets/icon-48.png" alt=""> SnipSnapStitch</div>
+    <div class="capture-buttons">
+      <button class="btn primary" data-capture="region" title="Drag to snip any area of the screen (Ctrl+Shift+S)"><span class="ic">⛶</span> Snip Area</button>
+      <button class="btn" data-capture="scrolling" title="Capture a long page or window by scrolling it"><span class="ic">⇳</span> Scroll Capture</button>
+      <button class="btn rec" data-capture="record" title="Record a video of your screen (Ctrl+Shift+R)"><span class="ic">●</span> Record Video</button>
+      <button class="btn" data-capture="fullscreen" title="Capture the whole screen (Ctrl+Shift+F)"><span class="ic">🖵</span> Full Screen</button>
+    </div>
+    <div class="spacer"></div>
+    <div class="search"><input id="search" type="search" placeholder="Search name or tag…" autocomplete="off"></div>
+    <button class="btn" id="importBtn" title="Import images or videos">Import</button>
+    <button class="btn" id="settingsBtn" title="Settings">⚙ Settings</button>
+  </header>
+
+  <div class="subbar">
+    <nav class="tabs" id="tabs">
+      <button class="tab active" data-filter="all">All</button>
+      <button class="tab" data-filter="images">Images</button>
+      <button class="tab" data-filter="videos">Videos</button>
+      <button class="tab" data-filter="favorites">★ Favorites</button>
+    </nav>
+    <div class="spacer"></div>
+    <span id="selInfo" class="muted"></span>
+    <label class="ctl">Sort
+      <select id="sort">
+        <option value="newest">Newest first</option>
+        <option value="oldest">Oldest first</option>
+        <option value="name">Name A–Z</option>
+        <option value="nameDesc">Name Z–A</option>
+        <option value="size">Largest first</option>
+      </select>
+    </label>
+    <label class="ctl">Size <input id="zoom" type="range" min="120" max="420" step="10" value="220"></label>
+  </div>
+
+  <main id="grid" class="grid" tabindex="0"></main>
+  <div id="empty" class="empty" hidden>
+    <div class="empty-art">🖼</div>
+    <h2 id="emptyTitle">Your library is empty</h2>
+    <p id="emptyText">Take a capture with the buttons above, or drag &amp; drop images and videos here.</p>
+  </div>
+
+  <div id="dropOverlay" class="drop-overlay" hidden><div>Drop files to import</div></div>
+  <div id="menu" class="menu" hidden></div>
+  <div id="modal" class="modal" hidden></div>
+  <div id="toast" class="toast" hidden></div>
+
+  <script src="library.js"></script>
+</body>
+</html>

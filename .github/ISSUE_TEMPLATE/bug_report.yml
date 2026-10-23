@@ -1,0 +1,44 @@
+name: Bug report
+description: Something isn't working
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What did you expect, and what happened instead? Screenshots are welcome.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open ...
+        2. Press Ctrl+Shift+S ...
+    validations:
+      required: true
+  - type: dropdown
+    id: feature
+    attributes:
+      label: Feature area
+      options: [Snip Area, Scroll Capture, Record Video, Full Screen, Library, Editor, Settings / hotkeys, Installer / portable exe, Other]
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: SnipSnapStitch version
+      placeholder: 0.1.0
+    validations:
+      required: true
+  - type: input
+    id: os
+    attributes:
+      label: Windows version and display setup
+      description: e.g. Windows 11 23H2, 2 monitors, 150% scaling
+  - type: textarea
+    id: logs
+    attributes:
+      label: Extra context
+      description: For scroll-capture issues, say what was scrolled (browser, VS Code, Excel…), whether manual or auto, and which warning text appeared.

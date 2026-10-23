@@ -1,0 +1,44 @@
+{
+  "name": "snipsnapstitch",
+  "version": "0.1.0",
+  "productName": "SnipSnapStitch",
+  "description": "SnipSnapStitch (SSS) - screen capture, scrolling capture, annotation and recording",
+  "private": true,
+  "author": "Leo Jiang",
+  "homepage": "https://github.com/leojiang/SnipSnapStitch#readme",
+  "repository": { "type": "git", "url": "git+https://github.com/leojiang/SnipSnapStitch.git" },
+  "bugs": { "url": "https://github.com/leojiang/SnipSnapStitch/issues" },
+  "keywords": ["screenshot", "scrolling-capture", "screen-recorder", "annotation", "electron", "windows"],
+  "engines": { "node": ">=20.9" },
+  "main": "src/main/main.js",
+  "scripts": {
+    "start": "electron .",
+    "package": "node tools/package.js",
+    "dist": "node tools/package.js && electron-builder --win portable --x64 --prepackaged dist/SnipSnapStitch-win32-x64",
+    "test": "node --test test/"
+  },
+  "license": "MIT",
+  "build": {
+    "appId": "com.snipsnapstitch.app",
+    "productName": "SnipSnapStitch",
+    "executableName": "SnipSnapStitch",
+    "directories": { "output": "release", "buildResources": "assets" },
+    "files": ["src/**/*", "assets/icon.ico", "assets/icon.png", "assets/icon-32.png", "assets/icon-48.png", "package.json"],
+    "asarUnpack": ["**/ffmpeg-static/ffmpeg.exe"],
+    "compression": "normal",
+    "win": {
+      "icon": "assets/icon.ico",
+      "signAndEditExecutable": false,
+      "target": [{ "target": "portable", "arch": ["x64"] }]
+    },
+    "portable": { "artifactName": "SnipSnapStitch-${version}-portable.exe" }
+  },
+  "devDependencies": {
+    "@electron/packager": "^18.4.4",
+    "electron": "^31.0.0",
+    "electron-builder": "^24.13.3"
+  },
+  "dependencies": {
+    "ffmpeg-static": "^5.3.0"
+  }
+}

@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self'">
+  <title>SnipSnapStitch Editor</title>
+  <link rel="stylesheet" href="editor.css">
+</head>
+<body>
+  <div id="app">
+    <header id="topbar">
+      <button id="btnLibrary" class="tb" title="Open library">LIB</button>
+      <span id="itemName" title="">Loading…</span>
+      <span class="sep"></span>
+      <button id="btnUndo" class="tb" title="Undo (Ctrl+Z)">UNDO</button>
+      <button id="btnRedo" class="tb" title="Redo (Ctrl+Y)">REDO</button>
+      <span class="spacer"></span>
+      <div id="zoomBox">
+        <button id="btnZoomOut" class="tb sm" title="Zoom out (Ctrl+-)">-</button>
+        <span id="zoomLabel" title="Zoom">100%</span>
+        <button id="btnZoomIn" class="tb sm" title="Zoom in (Ctrl++)">+</button>
+        <button id="btnFit" class="tb txt" title="Fit to window (Ctrl+0)">Fit</button>
+        <button id="btnActual" class="tb txt" title="Actual size 100% (Ctrl+1)">100%</button>
+      </div>
+      <span class="sep"></span>
+      <button id="btnCopy" class="tb txt" title="Copy image to clipboard (Ctrl+C)"></button>
+      <button id="btnSaveAs" class="tb txt" title="Save as PNG / JPG… (Ctrl+Shift+S)"></button>
+      <button id="btnSave" class="tb txt accent" title="Save (Ctrl+S)"></button>
+    </header>
+    <nav id="toolbar"></nav>
+    <main id="stage">
+      <canvas id="view"></canvas>
+      <textarea id="textEditor" hidden spellcheck="false"></textarea>
+      <div id="loading">Loading…</div>
+      <div id="toast"></div>
+    </main>
+    <aside id="panel"></aside>
+    <footer id="status">
+      <span id="stSize"></span>
+      <span id="stCursor"></span>
+      <span class="spacer"></span>
+      <span id="stDirty"></span>
+    </footer>
+  </div>
+  <script src="core/geometry.js"></script>
+  <script src="core/history.js"></script>
+  <script src="core/model.js"></script>
+  <script src="render.js"></script>
+  <script src="icons.js"></script>
+  <script src="props.js"></script>
+  <script src="editor.js"></script>
+</body>
+</html>

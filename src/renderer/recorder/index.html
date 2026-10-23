@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>SnipSnapStitch Recorder</title>
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data: blob:; media-src 'self' blob: mediastream:; style-src 'self' 'unsafe-inline'; script-src 'self'">
+  <link rel="stylesheet" href="recorder.css">
+</head>
+<body>
+  <!-- Setup HUD -->
+  <main id="setup" class="panel" hidden>
+    <header class="drag">
+      <span class="logo">&#9679;</span>
+      <h1>Video Capture</h1>
+      <button id="setup-close" class="icon nodrag" title="Cancel">&#10005;</button>
+    </header>
+
+    <section>
+      <label class="lbl">Capture</label>
+      <div class="seg" id="mode-seg">
+        <button data-mode="screen">Full screen</button>
+        <button data-mode="region">Region</button>
+        <button data-mode="window">Window</button>
+      </div>
+      <div id="display-row" class="row" hidden>
+        <label class="lbl inline" for="display-sel">Display</label>
+        <select id="display-sel"></select>
+      </div>
+      <div id="window-row" hidden>
+        <div id="window-list" class="winlist"></div>
+        <button id="window-refresh" class="link">Refresh windows</button>
+      </div>
+    </section>
+
+    <section>
+      <label class="lbl">Audio</label>
+      <label class="switch"><input type="checkbox" id="opt-audio"><span></span>System audio</label>
+      <label class="switch"><input type="checkbox" id="opt-mic"><span></span>Microphone</label>
+    </section>
+
+    <section>
+      <label class="lbl">Frame rate</label>
+      <div class="seg" id="fps-seg">
+        <button data-fps="15">15 fps</button>
+        <button data-fps="20">20 fps</button>
+        <button data-fps="30">30 fps</button>
+        <button data-fps="60">60 fps</button>
+      </div>
+      <label class="switch"><input type="checkbox" id="opt-countdown"><span></span>3-2-1 countdown</label>
+      <label class="switch" id="halo-row"><input type="checkbox" id="opt-halo"><span></span>Highlight cursor</label>
+      <label class="switch"><input type="checkbox" id="opt-optimize"><span></span>Take time to optimize to smaller video size when finished</label>
+    </section>
+
+    <footer>
+      <button id="setup-cancel" class="btn">Cancel</button>
+      <button id="setup-start" class="btn rec">&#9679; Record</button>
+    </footer>
+    <p id="setup-error" class="error" hidden></p>
+  </main>
+
+  <!-- Floating control bar -->
+  <div id="bar" class="bar" hidden>
+    <div class="drag bar-info">
+      <span id="bar-dot" class="dot"></span>
+      <span id="bar-time">00:00</span>
+      <span id="bar-mic" class="mic" title="Microphone">
+        <svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-3.08A7 7 0 0 0 19 11h-2z"/></svg>
+        <i class="slash"></i>
+      </span>
+    </div>
+    <button id="bar-pause" class="bbtn nodrag" title="Pause"></button>
+    <button id="bar-stop" class="bbtn stop nodrag" title="Stop and save"></button>
+    <button id="bar-discard" class="bbtn trash nodrag" title="Discard recording">
+      <svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M6 19a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+    </button>
+  </div>
+
+  <!-- Region selection overlay -->
+  <div id="region" hidden>
+    <div id="region-hint">Drag to select the area to record &middot; Esc to cancel</div>
+    <div id="region-box" hidden><span id="region-size"></span></div>
+  </div>
+
+  <!-- Countdown -->
+  <div id="countdown" hidden><span id="count-num">3</span></div>
+
+  <!-- Cursor halo -->
+  <div id="halo" hidden></div>
+
+  <script src="gif-encoder.js"></script>
+  <script src="webm-duration.js"></script>
+  <script src="recorder.js"></script>
+  <script src="ui.js"></script>
+</body>
+</html>
