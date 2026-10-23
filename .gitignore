@@ -27,3 +27,6 @@ desktop.ini
 # Test scratch profiles
 tmp/
 .tmp/
+
+# Private local notes and backups (never published)
+.private/
