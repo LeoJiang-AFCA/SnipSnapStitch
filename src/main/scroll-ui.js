@@ -52,23 +52,17 @@ function createHelpers() {
   return { frame, bar, loaded };
 }
 
-// Starting a renderer takes about a second on some machines, so one ready set of helper windows is kept in reserve.
-let spare = null;
-
 /**
  * Floating helpers for scrolling capture: a click-through border around the capture area and a small control bar.
  * The control bar window never takes focus, so the application being scrolled keeps receiving the wheel/keys.
- * Both windows are created up front (renderer start-up can be slow) and shown with present().
+ * Both windows are created when the capture starts (so they load while the user picks the area) and shown with present().
  */
 class ScrollUI {
   constructor(onAction) {
     this.onAction = onAction;
     this.closed = false;
     this.pending = null;
-    let set = spare;
-    spare = null;
-    if (set && (set.frame.isDestroyed() || set.bar.isDestroyed())) set = null;
-    set = set || createHelpers();
+    const set = createHelpers();
     this.frame = set.frame;
     this.bar = set.bar;
     this.barId = this.bar.webContents.id;
@@ -77,14 +71,6 @@ class ScrollUI {
       if (e.sender.id === this.barId && !this.closed) this.onAction(String(name));
     };
     ipcMain.on('scrollbar:action', this.onIpc);
-  }
-
-  // Creates the reserve set (resolves once it has loaded).
-  static prewarm() {
-    if (spare) return Promise.resolve();
-    const set = createHelpers();
-    spare = set;
-    return Promise.race([set.loaded, new Promise((r) => setTimeout(r, 8000).unref())]);
   }
 
   // rect: capture area in global DIP coordinates { x, y, w, h }; displayBounds: DIP bounds of its display.

@@ -51,4 +51,16 @@ Library, overlay, recorder, scrollbar and settings windows are plain HTML/CSS/JS
 - Preloads expose narrow `window.*Api` surfaces; all privileged work happens in the main process via `ipcMain.handle`.
 - The only registry write is the optional Print Screen setting (restored on untick/quit).
 
+## Startup and lazy loading
+Goal: a snip-only user pays only for region capture. At launch the app creates the tray, hotkeys, IPC handlers, and a small
+pool of hidden overlay windows (one per display, for instant Snip Area). Everything else loads on first use:
+- **Scroll Capture**: `scroll-ui.js` and `frame-stream.js` are required when the capture starts. Their windows load while the
+  user picks the area; the PowerShell helper (`winbounds.js`) starts at the same point and stops itself after 2 idle minutes.
+  An unused pre-warmed frame-stream host is destroyed when the capture ends.
+- **Recorder**: `recorder.js` and its IPC handlers load on the first Record action (hotkey, tray or the library button, which
+  has a small `recorder:start` stub in `main.js`).
+- **ffmpeg**: `ffmpeg-static` is only required when a video is optimized; stale-file cleanup runs 15 s after start.
+Idle cost with no library window: 4 processes / ~325 MB (was 6 / ~515 MB plus a PowerShell process). Keep new heavy features
+behind `require()` at the point of use and never spawn windows or processes at startup.
+
 See [SCROLL-CAPTURE.md](SCROLL-CAPTURE.md) for the stitching algorithm and [DEVELOPMENT.md](DEVELOPMENT.md) for build/test workflow.

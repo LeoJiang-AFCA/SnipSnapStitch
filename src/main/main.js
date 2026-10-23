@@ -57,7 +57,8 @@ app.whenReady().then(() => {
   library.register();
   require('./editor-ipc').register();
   require('./capture').register();
-  require('./recorder').register();
+  // The recorder (and its IPC handlers) load on first use; this stub only covers the library's Record button.
+  ipcMain.handle('recorder:start', (_e, opts) => require('./recorder').startRecording(opts));
   require('./tray').init();
   require('./printscreen').init();
   require('./shortcuts').init();

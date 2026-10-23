@@ -476,6 +476,7 @@ async function runSession(o) {
 }
 
 async function startRecording(opts) {
+  if (!registered) register(); // IPC handlers and the capture session are only set up once recording is first used
   if (state.status === 'preparing' || state.status === 'countdown') {
     resetToIdle();
     return getState();
@@ -597,7 +598,10 @@ async function convertGifFromFile(filePath, onProgress) {
 
 /* ---------- IPC ---------- */
 
+let registered = false;
+
 function register() {
+  registered = true;
   ensureSession();
   const handle = (channel, fn) => {
     ipcMain.removeHandler(channel);

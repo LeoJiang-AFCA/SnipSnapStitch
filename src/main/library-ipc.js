@@ -136,7 +136,7 @@ function register() {
       if (!w.isDestroyed() && !w.webContents.isDestroyed()) w.webContents.send(channel, payload);
     }
   };
-  optimizer.cleanStale(store.dataDir());
+  setTimeout(() => { try { optimizer.cleanStale(store.dataDir()); } catch (e) { console.error('cleanStale failed', e); } }, 15000).unref();
   optimizer.events.on('progress', (p) => broadcast('library:optimize-event', { type: 'progress', ...p }));
   optimizer.events.on('done', (r) => {
     broadcast('library:optimize-event', { type: 'done', ...r });

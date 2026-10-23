@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 
 ## [Unreleased]
 
+### Changed
+- Faster, lighter start-up: scroll-capture helpers, the PowerShell window helper and the recorder now load on first use
+  instead of at launch (idle: 6 → 4 processes, ~515 → ~325 MB). Snip Area keeps its pre-warmed overlays.
+
 ## [0.1.0] - 2026-10-23
 
 First public release.

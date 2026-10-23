@@ -46,6 +46,13 @@ class FrameStream {
     try { await host.loaded; } catch { if (spare === host) spare = null; }
   }
 
+  // Destroys the reserve host if nobody claimed it.
+  static discardSpare() {
+    const host = spare;
+    spare = null;
+    if (host && !host.win.isDestroyed()) host.win.destroy();
+  }
+
   async start(timeoutMs = 5000) {
     try {
       const sources = await desktopCapturer.getSources({ types: ['screen'], thumbnailSize: { width: 1, height: 1 }, fetchWindowIcons: false });

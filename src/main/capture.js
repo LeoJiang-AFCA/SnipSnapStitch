@@ -3,8 +3,10 @@ const path = require('path');
 const { app, BrowserWindow, desktopCapturer, screen, ipcMain, clipboard, nativeImage, globalShortcut, dialog } = require('electron');
 const util = require('./capture-util');
 const winbounds = require('./winbounds');
-const { ScrollUI } = require('./scroll-ui');
-const { FrameStream } = require('./frame-stream');
+
+// Scroll-capture helpers are loaded on first use, so a plain region snip never pays for them.
+const getScrollUI = () => require('./scroll-ui').ScrollUI;
+const getFrameStream = () => require('./frame-stream').FrameStream;
 
 // Collaborating modules are required lazily so load order in main.js does not matter.
 const getStore = () => require('./store');
@@ -319,30 +321,19 @@ function createOverlayWindow(session, display, init, opts = {}) {
 let warming = false;
 let warmTimer = null;
 
-// Spawns the reserve windows one at a time (each start-up is slow and they would otherwise compete with the window
-// the user is waiting for).
+// Spawns the reserve overlay windows one at a time (each start-up is slow and they would otherwise compete with the
+// window the user is waiting for). Only the region-capture overlays are kept warm; scroll-capture helpers are started on demand.
 async function warmUp() {
   if (warming || busy) return;
   warming = true;
   try {
     const want = Math.min(4, screen.getAllDisplays().length);
-    const steps = [
-      async () => {
-        if (pool.length >= want) return false;
+    while (!busy && pool.length < want) {
+      try {
         const info = spawnOverlay();
         pool.push(info);
         await Promise.race([info.loadedPromise, new Promise((r) => setTimeout(r, 6000).unref())]);
-        return true;
-      },
-      async () => { await ScrollUI.prewarm(); return false; },
-      async () => { await FrameStream.prewarm(); return false; },
-    ];
-    // The first overlay is the one a region capture needs; the rest of the pool follows the helper windows.
-    for (let i = 0; i < steps.length && !busy; i++) {
-      try { await steps[i](); } catch (err) { console.error('[capture] warm-up:', err); }
-    }
-    while (!busy && pool.length < want) {
-      try { if (!(await steps[0]())) break; } catch (err) { console.error('[capture] overlay pool:', err); break; }
+      } catch (err) { console.error('[capture] overlay pool:', err); break; }
     }
   } finally {
     warming = false;
@@ -533,6 +524,8 @@ function captureScrolling() {
     let finishRequested = false;
     let wantAuto = false;
     const canAuto = !!winbounds.available;
+    const ScrollUI = getScrollUI();
+    const FrameStream = getFrameStream();
     const ui = new ScrollUI((action) => {
       if (action === 'done') finishRequested = true;
       else if (action === 'cancel') session.cancel();
@@ -542,6 +535,9 @@ function captureScrolling() {
     let savedCursor = null;
     try {
       const shots = await grabAll(false);
+      // Start the heavy helpers while the user is still choosing the area.
+      FrameStream.prewarm().catch(() => {});
+      if (winbounds.available) winbounds.warmUp();
       const sel = await selectArea(session, 'scrolling', shots);
       if (!sel) return null;
       session.closeOverlays(); // keep the app's own windows hidden while scrolling
@@ -789,6 +785,7 @@ function captureScrolling() {
     } finally {
       if (enterRegistered) { try { globalShortcut.unregister('Enter'); } catch {} }
       ui.close();
+      FrameStream.discardSpare(); // an unused pre-warmed host (e.g. cancelled selection) must not linger
     }
   });
 }
@@ -837,7 +834,6 @@ function register() {
     for (const info of pool.splice(0)) { try { info.win.destroy(); } catch {} }
   });
   refillPool(5000);
-  if (winbounds.available) setTimeout(() => winbounds.warmUp(), 3000).unref();
 }
 
 module.exports = { register, captureRegion, captureFullscreen, captureWindow, captureScrolling, pickRegion };
