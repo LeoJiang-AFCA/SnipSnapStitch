@@ -1,6 +1,6 @@
 # SnipSnapStitch (SSS)
 
-[![CI](https://github.com/leojiang/SnipSnapStitch/actions/workflows/ci.yml/badge.svg)](https://github.com/leojiang/SnipSnapStitch/actions/workflows/ci.yml)
+[![CI](https://github.com/LeoJiang-AFCA/SnipSnapStitch/actions/workflows/ci.yml/badge.svg)](https://github.com/LeoJiang-AFCA/SnipSnapStitch/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 ![Platform: Windows](https://img.shields.io/badge/platform-Windows%2010%2F11-0078d4)
 
@@ -27,7 +27,7 @@ video, then annotate and organise everything in a built-in library. Everything r
 Hotkeys can be changed in Settings. In scroll capture, `Enter` finishes and `Esc` cancels.
 
 ## Download
-Grab `SnipSnapStitch-<version>-portable.exe` from the [Releases](https://github.com/leojiang/SnipSnapStitch/releases) page
+Grab `SnipSnapStitch-<version>-portable.exe` from the [Releases](https://github.com/LeoJiang-AFCA/SnipSnapStitch/releases) page
 (verify it against `SHA256SUMS.txt`), copy it anywhere and double-click — no installer needed.
 
 > The exe is **not code-signed**, so Windows SmartScreen may warn on first run ("More info" → "Run anyway").
@@ -39,7 +39,7 @@ Your captures and settings are stored in `%APPDATA%\snipsnapstitch`.
 Requires Windows, [Node.js](https://nodejs.org/) 20.9+ and npm.
 
 ```powershell
-git clone https://github.com/leojiang/SnipSnapStitch.git
+git clone https://github.com/LeoJiang-AFCA/SnipSnapStitch.git
 cd SnipSnapStitch
 npm ci
 npm start          # run in development

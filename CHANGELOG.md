@@ -21,5 +21,5 @@ First public release.
 - Tray icon, global hotkeys, Settings window, optional "Start with Windows" and optional "Use Print Screen key".
 - Portable single-file Windows executable.
 
-[Unreleased]: https://github.com/leojiang/SnipSnapStitch/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/leojiang/SnipSnapStitch/releases/tag/v0.1.0
+[Unreleased]: https://github.com/LeoJiang-AFCA/SnipSnapStitch/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/LeoJiang-AFCA/SnipSnapStitch/releases/tag/v0.1.0

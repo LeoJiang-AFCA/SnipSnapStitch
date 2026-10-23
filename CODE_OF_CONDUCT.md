@@ -44,7 +44,7 @@ officially representing the project in public spaces.
 ## Enforcement
 
 Report instances of abusive, harassing, or otherwise unacceptable behavior privately via GitHub
-([private vulnerability/security advisory form](https://github.com/leojiang/SnipSnapStitch/security/advisories/new)) or by
+([private vulnerability/security advisory form](https://github.com/LeoJiang-AFCA/SnipSnapStitch/security/advisories/new)) or by
 contacting the maintainer through their GitHub profile. All complaints will be reviewed and investigated promptly and
 fairly, and the privacy and security of the reporter will be respected.
 

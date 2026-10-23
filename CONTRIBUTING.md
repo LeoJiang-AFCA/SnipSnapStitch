@@ -11,7 +11,7 @@ Thanks for helping! Bug reports, ideas, docs and code are all welcome.
 Requirements: Windows 10/11, Node.js 20.9+ and npm. (Python 3 + Pillow only if you regenerate icons.)
 
 ```powershell
-git clone https://github.com/leojiang/SnipSnapStitch.git
+git clone https://github.com/LeoJiang-AFCA/SnipSnapStitch.git
 cd SnipSnapStitch
 npm ci
 npm start      # run the app
