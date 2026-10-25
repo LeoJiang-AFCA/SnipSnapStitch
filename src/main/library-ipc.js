@@ -129,6 +129,8 @@ function register() {
   });
 
   ipcMain.handle('library:list', async (_e, filter) => Promise.all((await store.list(filter || {})).map(decorate)));
+  // Windows regional format; the renderer's own locale is en-US because only that Chromium locale pack is shipped.
+  ipcMain.handle('library:locale', () => app.getSystemLocale());
 
   // ---- video optimizer (smaller re-encode) ----
   const broadcast = (channel, payload) => {

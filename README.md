@@ -8,7 +8,8 @@ A free, open-source screen capture tool for Windows: snip a region, **capture sc
 video, then annotate and organise everything in a built-in library. Everything runs locally — no account, no cloud, no telemetry.
 
 ## Features
-- **Snip Area** – drag to capture any region (multi-monitor and DPI aware).
+- **Snip Area** – drag to capture any region (multi-monitor and DPI aware). Like the Windows Snipping Tool, releasing the
+  mouse captures, copies the snip to the clipboard and opens the editor.
 - **Scroll Capture** – manual scroll or auto-scroll; frames are stitched into one tall image. Handles sticky headers/footers,
   fixed sidebars/minimaps, removes the mouse pointer, and warns when content might be missing. Design notes: [docs/SCROLL-CAPTURE.md](docs/SCROLL-CAPTURE.md).
 - **Record Video** – screen or region to WebM, pause/resume, optional GIF export, optional "optimize to smaller MP4".
@@ -16,7 +17,7 @@ video, then annotate and organise everything in a built-in library. Everything r
 - **Library** – thumbnail grid with tags, favourites, search and rename.
 - **Editor** – arrow, line, rectangle, ellipse, text, callout, step badges, stamps, highlighter, pen, blur, spotlight, magnify,
   eyedropper, crop, canvas size, undo/redo, zoom and pan.
-- Tray icon, global hotkeys, optional *Start with Windows*, optional *Use Print Screen key for SnipSnapStitch*.
+- Tray icon, global hotkeys, *Start with Windows* (on by default), optional *Use Print Screen key for SnipSnapStitch*.
 
 | Action | Default hotkey |
 |---|---|
@@ -27,11 +28,14 @@ video, then annotate and organise everything in a built-in library. Everything r
 Hotkeys can be changed in Settings. In scroll capture, `Enter` finishes and `Esc` cancels.
 
 ## Download
-Grab `SnipSnapStitch-<version>-portable.exe` from the [Releases](https://github.com/LeoJiang-AFCA/SnipSnapStitch/releases) page
-(verify it against `SHA256SUMS.txt`), copy it anywhere and double-click — no installer needed.
+Grab `SnipSnapStitch-Setup-<version>.exe` from the [Releases](https://github.com/LeoJiang-AFCA/SnipSnapStitch/releases) page
+(verify it against `SHA256SUMS.txt`) and run it. It installs for the current user only (no admin rights) into
+`%LOCALAPPDATA%\Programs\snipsnapstitch`, adds a Start-menu shortcut, and can be removed from *Settings → Apps*.
+Quit SnipSnapStitch before installing an update — the installer closes running copies.
 
-> The exe is **not code-signed**, so Windows SmartScreen may warn on first run ("More info" → "Run anyway").
-> You can always build it yourself from source (below).
+> The exe is **not code-signed**, so Windows SmartScreen may warn on first run ("More info" → "Run anyway"). On PCs with
+> strict antivirus the install can take about a minute: it starts the app once in the background so the antivirus scan
+> happens then, not on your first launch. You can always build it yourself from source (below).
 
 Your captures and settings are stored in `%APPDATA%\snipsnapstitch`.
 
@@ -45,7 +49,7 @@ npm ci
 npm start          # run in development
 npm test           # unit tests
 npm run package    # folder build in dist\ (fast start-up)
-npm run dist       # single-file portable exe in release\
+npm run dist       # per-user installer in release\
 ```
 
 ## Documentation

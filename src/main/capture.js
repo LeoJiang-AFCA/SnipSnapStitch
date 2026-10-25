@@ -383,12 +383,14 @@ async function prepare(session, useDelay = true) {
 
 const HINTS = {
   region: 'Drag to select an area \u00b7 adjust with handles \u00b7 Enter / double-click to capture \u00b7 Esc to cancel',
+  snip: 'Drag to select an area \u00b7 release to capture and copy it \u00b7 Esc to cancel',
   window: 'Click a window to capture it, or drag to select an area \u00b7 Esc to cancel',
   scrolling: 'Select the area to scroll-capture, then press Enter \u00b7 you then scroll yourself or use Auto-scroll \u00b7 Esc to cancel',
 };
 
 // Shows one overlay per display and resolves { shot, rect } (rect in CSS px of that display) or null on cancel.
-async function selectArea(session, kind, shots) {
+// opts.instant: the selection is taken as soon as the mouse is released (no adjust/confirm step).
+async function selectArea(session, kind, shots, opts = {}) {
   const windowLists = kind === 'window' ? await gatherWindows(shots) : shots.map(() => []);
   if (session.cancelled) return null;
   const target = nearestDisplay();
@@ -413,7 +415,8 @@ async function selectArea(session, kind, shots) {
         originX: origin.x,
         originY: origin.y,
         windows: windowLists[index],
-        hint: HINTS[kind] || HINTS.region,
+        instant: !!opts.instant,
+        hint: opts.instant ? HINTS.snip : HINTS[kind] || HINTS.region,
       };
       const info = createOverlayWindow(session, shot.display, init);
       info.index = index;
@@ -463,10 +466,11 @@ function registerOverlayIpc() {
 
 // ---- finishing ---------------------------------------------------------------------------------------------------
 
-async function finalize(png, source) {
+// opts.copy: always put the image on the clipboard (Snip Area), whatever the settings say.
+async function finalize(png, source, opts = {}) {
   const item = await getStore().addCapture(png, { source });
   const after = setting('afterCapture', 'editor');
-  if (setting('copyToClipboard', false) || after === 'clipboard') {
+  if (opts.copy || setting('copyToClipboard', false) || after === 'clipboard') {
     try { clipboard.writeImage(nativeImage.createFromBuffer(png)); } catch (err) { console.error('[capture] clipboard failed:', err); }
   }
   try {
@@ -486,15 +490,17 @@ function physicalRectOf(sel) {
 // ---- public capture functions ------------------------------------------------------------------------------------
 
 function captureArea(kind) {
+  // Snip Area works like the Windows Snipping Tool: releasing the mouse captures and the snip goes to the clipboard.
+  const snip = kind === 'region';
   return withSession(async (session) => {
     if (!(await prepare(session))) return null;
     const shots = await grabAll(!!setting('captureCursor', false));
-    const sel = await selectArea(session, kind, shots);
+    const sel = await selectArea(session, kind, shots, { instant: snip });
     if (!sel) return null;
     session.release();
     const r = physicalRectOf(sel);
     const png = sel.shot.image.crop({ x: r.x, y: r.y, width: r.w, height: r.h }).toPNG();
-    return finalize(png, kind);
+    return finalize(png, kind, { copy: snip });
   });
 }
 

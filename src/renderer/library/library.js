@@ -28,7 +28,9 @@
   }
 
   const fmtSize = (b) => (b < 1024 ? b + ' B' : b < 1048576 ? (b / 1024).toFixed(0) + ' KB' : (b / 1048576).toFixed(1) + ' MB');
-  const fmtDate = (t) => new Date(t).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' });
+  const DATE_OPTS = { dateStyle: 'medium', timeStyle: 'short' };
+  let dateFmt = new Intl.DateTimeFormat([], DATE_OPTS);
+  const fmtDate = (t) => dateFmt.format(new Date(t));
   const typeLabel = (it) => (it.type === 'image' ? '' : it.type === 'gif' ? 'GIF' : 'VIDEO');
 
   let toastTimer;
@@ -489,5 +491,8 @@
   }).catch(() => {});
 
   document.querySelectorAll('.tab').forEach((t) => t.classList.toggle('active', t.dataset.filter === state.filter));
-  guard(reload);
+  guard(async () => {
+    try { dateFmt = new Intl.DateTimeFormat((await api.locale()) || [], DATE_OPTS); } catch (_) { /* keep the default */ }
+    await reload();
+  });
 })();

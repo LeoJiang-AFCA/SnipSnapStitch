@@ -17,7 +17,7 @@ test('defaults: hotkeys, after-capture action and launch at login', () => {
   assert.equal(s.get('hotkeys.region'), 'Ctrl+Shift+S');
   assert.equal(s.get('hotkeys.record'), 'Ctrl+Shift+R');
   assert.equal(s.get('afterCapture'), 'editor');
-  assert.equal(s.get('launchAtLogin'), false);
+  assert.equal(s.get('launchAtLogin'), true);
 });
 
 test('setMany persists known keys only and emits changed', () => {
@@ -25,12 +25,12 @@ test('setMany persists known keys only and emits changed', () => {
   const s = fresh();
   let fired = 0;
   s.events.on('changed', () => fired++);
-  s.setMany({ delaySeconds: 3, launchAtLogin: true, notASetting: 1 });
+  s.setMany({ delaySeconds: 3, launchAtLogin: false, notASetting: 1 });
   assert.equal(fired, 1);
   assert.equal(s.get('delaySeconds'), 3);
   const saved = JSON.parse(fs.readFileSync(file, 'utf8'));
   assert.equal(saved.delaySeconds, 3);
-  assert.equal(saved.launchAtLogin, true);
+  assert.equal(saved.launchAtLogin, false);
   assert.ok(!('notASetting' in saved));
 });
 
@@ -45,4 +45,14 @@ test('a corrupt settings file falls back to defaults', () => {
   fs.writeFileSync(file, '{oops');
   const s = fresh();
   assert.equal(s.get('afterCapture'), 'editor');
+});
+
+test('older settings files move to Start with Windows once; a later untick is kept', () => {
+  fs.writeFileSync(file, JSON.stringify({ launchAtLogin: false, afterCapture: 'library' }));
+  let s = fresh();
+  assert.equal(s.get('launchAtLogin'), true);
+  assert.equal(s.get('afterCapture'), 'library');
+  s.setMany({ launchAtLogin: false });
+  s = fresh();
+  assert.equal(s.get('launchAtLogin'), false);
 });

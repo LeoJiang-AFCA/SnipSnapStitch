@@ -16,7 +16,7 @@ docs/           design notes
 ## Main-process modules (`src/main`)
 | File | Role |
 |---|---|
-| `main.js` | Startup: app name / AppUserModelId, pins userData to `%APPDATA%\snipsnapstitch`, `process-per-site`, login item (`--hidden`), registers IPC and modules |
+| `main.js` | Startup: app name / AppUserModelId, pins userData to `%APPDATA%\snipsnapstitch`, `process-per-site`, `--prewarm` (installer warm-up: hidden window, then quit), login item (`--hidden`), registers IPC and modules |
 | `windows.js` | Creates and pools windows (library, editor, settings, recorder setup) |
 | `tray.js`, `shortcuts.js` | Tray menu; global hotkeys (Region `Ctrl+Shift+S`, Record `Ctrl+Shift+R`, Fullscreen `Ctrl+Shift+F`) and optional Print Screen |
 | `printscreen.js` | Optional "Print Screen opens SSS": sets HKCU `Control Panel\Keyboard\PrintScreenKeyForSnippingEnabled` to 0, stores the original in settings (`printScreenBackup`), restores it when unticked and on quit |
@@ -41,8 +41,15 @@ Library, overlay, recorder, scrollbar and settings windows are plain HTML/CSS/JS
   inpainted from neighbouring frames in the stitcher (auto-scroll also parks the pointer away).
 - **Fixed side columns** (sidebars, minimaps) are detected and shown once at the top of a stitched image.
 - **userData is `%APPDATA%\snipsnapstitch`**; `main.js` contains a one-time migration for libraries created by early builds.
-- **Single-file exe** via electron-builder `portable` built from the `@electron/packager` folder output
+- **Per-user NSIS installer** (one-click, no admin) via electron-builder, built from the `@electron/packager` folder output
   (`--prepackaged`), with `signAndEditExecutable: false` (winCodeSign extraction needs symlink privilege on some machines).
+  Not `portable`: that target re-extracts the app to a temp folder on every launch (~28 s start) and gives the login item a
+  temp path. Only the `en-US` locale pak ships, so the library formats dates with `app.getSystemLocale()` (via IPC).
+- **Antivirus-friendly install**: the installer pre-starts the app once (`--prewarm`, `tools/installer.nsh`) so the scan of
+  the new exe happens during install, and the exe stays byte-identical across releases (Electron version in its version
+  resource, no embedded asar hash; `app.getVersion()` still comes from `package.json`).
+- **Snip Area is release-to-capture** (`selectArea(..., { instant: true })`): mouse-up confirms, the PNG always goes to the
+  clipboard, then `afterCapture` runs. Window capture, Scroll Capture and the recording area picker keep the confirm step.
 - Pan is the default editor tool: dragging empty canvas pans; clicking/dragging an annotation (or its handles) selects/moves it;
   other tools return to Pan on Esc.
 

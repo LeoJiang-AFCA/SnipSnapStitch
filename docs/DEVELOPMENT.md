@@ -9,20 +9,31 @@ npm ci
 npm start                       # dev run (electron .)
 npm test                        # node --test test/
 npm run package                 # folder build: dist\SnipSnapStitch-win32-x64 (fast start)
-npm run dist                    # package + electron-builder portable -> release\SnipSnapStitch-<version>-portable.exe
+npm run dist                    # package + electron-builder NSIS -> release\SnipSnapStitch-Setup-<version>.exe
 python tools\build-icon.py      # regenerate assets\icon*.png/.ico from assets\icon-source.png
 ```
-- `npm run dist` needs `CSC_IDENTITY_AUTO_DISCOVERY=false`; `signAndEditExecutable` is false. If the target exe is locked by a
-  running copy, build with `--config.portable.artifactName=SnipSnapStitch-new.exe` and move it afterwards.
-- The portable exe unpacks to a temp folder on each launch (slower start than the folder build). ffmpeg lives in
-  `app.asar.unpacked\node_modules\ffmpeg-static\ffmpeg.exe`.
+- `npm run dist` needs `CSC_IDENTITY_AUTO_DISCOVERY=false`; `signAndEditExecutable` is false; `publish` is null (no
+  `latest.yml`). `tools/package.js` keeps only the `en-US` Chromium locale and excludes `.git`, `.github`, `.vscode` and
+  `.private` from `app.asar`.
+- The installer is one-click and per-user (`%LOCALAPPDATA%\Programs\snipsnapstitch`). It **closes every process named
+  `SnipSnapStitch.exe`** before installing, so never run it (or its uninstaller) while a copy you care about is running.
+  To test install/uninstall, build a renamed clone (`--config.executableName=… --config.productName=… --config.appId=…`),
+  then `Setup.exe /S /D=<dir>` and `"Uninstall <name>.exe" /S /currentuser`.
+- We moved off electron-builder `portable`: it re-extracted the whole app to a temp folder on every launch (~28 s start vs
+  ~1.5 s installed). ffmpeg lives in `app.asar.unpacked\node_modules\ffmpeg-static\ffmpeg.exe`.
+- **First start of a newly written exe** is slow on locked-down PCs (this one: Cortex XDR + Defender with strict cloud
+  settings): ~8–10 s to scan the 172 MB exe and DLLs, plus ~8 s more if its hash has never been seen. Two mitigations:
+  - `tools/installer.nsh` (`customInstall`) runs `SnipSnapStitch.exe --prewarm` with a throwaway profile in `$PLUGINSDIR`;
+    `main.js` opens one hidden window and quits, so the scan happens during install (first launch 21.9 s → 1.9 s).
+  - `tools/package.js` keeps the exe byte-identical across our releases: `appVersion` is the Electron version and the
+    INTEGRITY/ELECTRONASAR resource is stripped (via `resedit`). Enabling the asar-integrity fuse later would undo this.
 - Env switches: `SSS_ISOLATED=1` (one renderer per window), `--hidden` (start in tray), `--user-data-dir=<dir>` (isolated profile).
 - Don't stop a running SnipSnapStitch to test; launch with an isolated `--user-data-dir`.
 
 ## Releasing
 1. Update `version` in `package.json` and move *Unreleased* notes to a new section in `CHANGELOG.md`.
 2. Commit, then tag and push: `git tag v0.1.0; git push origin v0.1.0`.
-3. The **Release** workflow tests, builds the portable exe, and creates a **draft** GitHub release with a SHA-256 checksum. Review and publish it.
+3. The **Release** workflow tests, builds the installer, and creates a **draft** GitHub release with a SHA-256 checksum. Review and publish it.
 
 ## Testing approach
 - Unit tests (`test/`): capture-util (stitching, scroll detection, fixed columns, cursor patching), editor-core, gif-encoder,

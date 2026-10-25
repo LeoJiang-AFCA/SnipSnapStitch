@@ -1,6 +1,6 @@
 # Third-party notices
 
-SnipSnapStitch is licensed under the MIT License (see `LICENSE`). It depends on, and the portable executable bundles:
+SnipSnapStitch is licensed under the MIT License (see `LICENSE`). It depends on, and the installer bundles:
 
 | Component | License | Notes |
 |---|---|---|

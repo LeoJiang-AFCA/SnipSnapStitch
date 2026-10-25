@@ -22,7 +22,7 @@ body:
     id: feature
     attributes:
       label: Feature area
-      options: [Snip Area, Scroll Capture, Record Video, Full Screen, Library, Editor, Settings / hotkeys, Installer / portable exe, Other]
+      options: [Snip Area, Scroll Capture, Record Video, Full Screen, Library, Editor, Settings / hotkeys, Installer, Other]
     validations:
       required: true
   - type: input

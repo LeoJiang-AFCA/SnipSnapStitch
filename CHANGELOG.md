@@ -7,8 +7,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 ## [Unreleased]
 
 ### Changed
+- **Installer instead of the portable exe.** `SnipSnapStitch-Setup-<version>.exe` is a one-click, per-user install (no admin)
+  into `%LOCALAPPDATA%\Programs\snipsnapstitch`. The portable exe re-extracted ~340 MB to a temp folder on every launch
+  (~28 s start); the installed app starts in ~1.5 s.
+- **Fast first launch after install/update**: the installer starts the app once in the background (`--prewarm`), so the
+  antivirus scan of the new exe and DLLs (~10–25 s on a locked-down PC) happens under the installer's progress bar instead
+  of on your first launch (measured 21.9 s → 1.9 s). The exe is now byte-identical across releases (it carries the Electron
+  version, and the unused asar hash is stripped), so updates don't present a never-seen file to cloud scanning.
+- **Start with Windows is on by default** (existing settings are switched on once; unticking it later is kept), so the app
+  is already running in the tray when you need it.
+- **Snip Area works like the Windows Snipping Tool**: releasing the mouse captures straight away (no ✓ Capture step),
+  copies the snip to the clipboard and then follows "After capture" (editor by default). Scroll Capture, window capture and
+  the recording area picker keep the adjust/confirm step.
+- The selection magnifier zooms half as much (21×21 pixels instead of 11×11 in the same box).
+- Library dates follow the Windows regional format.
 - Faster, lighter start-up: scroll-capture helpers, the PowerShell window helper and the recorder now load on first use
   instead of at launch (idle: 6 → 4 processes, ~515 → ~325 MB). Snip Area keeps its pre-warmed overlays.
+- Smaller download: only the en-US Chromium locale is shipped (~38 MB less), and private dev notes are no longer packed
+  into `app.asar`.
 
 ## [0.1.0] - 2026-10-23
 

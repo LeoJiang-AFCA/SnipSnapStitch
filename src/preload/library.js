@@ -5,6 +5,7 @@ const inv = (ch, ...a) => ipcRenderer.invoke(ch, ...a);
 
 contextBridge.exposeInMainWorld('libraryApi', {
   list: (filter) => inv('library:list', filter),
+  locale: () => inv('library:locale'),
   get: (id) => inv('library:get', id),
   thumbDataUrl: (id) => inv('library:thumbDataUrl', id),
   remove: (ids) => inv('library:remove', ids),

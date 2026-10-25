@@ -50,7 +50,10 @@
   el.shot.getContext('2d').putImageData(new ImageData(pixels, W, H), 0, 0);
 
   const lctx = el.loupeCanvas.getContext('2d');
-  const limg = lctx.createImageData(11, 11);
+  // The magnifier shows LOUPE x LOUPE screen pixels (odd, so one sits in the centre) in a fixed 143 px box.
+  const LOUPE = el.loupeCanvas.width;
+  const HALF = (LOUPE - 1) / 2;
+  const limg = lctx.createImageData(LOUPE, LOUPE);
   const l32 = new Uint32Array(limg.data.buffer);
 
   el.hint.textContent = init.hint || '';
@@ -75,12 +78,13 @@
   const hasSel = () => state.mode === 'selected' || state.mode === 'drag' || state.mode === 'move' || state.mode === 'resize';
 
   function confirm(r) {
-    if (state.done) return;
+    if (state.done) return false;
     const w = r.w * scaleX();
     const h = r.h * scaleY();
-    if (w < 1 || h < 1) return;
+    if (w < 1 || h < 1) return false;
     state.done = true;
     api.confirm({ x: r.x, y: r.y, w: r.w, h: r.h });
+    return true;
   }
 
   function cancel() {
@@ -137,11 +141,11 @@
     if (m.x < 0) { el.loupe.hidden = true; return; }
     const px = clamp(Math.floor(m.x * scaleX()), 0, W - 1);
     const py = clamp(Math.floor(m.y * scaleY()), 0, H - 1);
-    for (let j = 0; j < 11; j++) {
-      for (let i = 0; i < 11; i++) {
-        const sx = px + i - 5;
-        const sy = py + j - 5;
-        l32[j * 11 + i] = sx >= 0 && sy >= 0 && sx < W && sy < H ? px32[sy * W + sx] : 0xff202020;
+    for (let j = 0; j < LOUPE; j++) {
+      for (let i = 0; i < LOUPE; i++) {
+        const sx = px + i - HALF;
+        const sy = py + j - HALF;
+        l32[j * LOUPE + i] = sx >= 0 && sy >= 0 && sx < W && sy < H ? px32[sy * W + sx] : 0xff202020;
       }
     }
     lctx.putImageData(limg, 0, 0);
@@ -230,6 +234,10 @@
         state.mode = 'idle';
         state.pendingWin = null;
         if (win) { confirm({ x: win.x, y: win.y, w: win.w, h: win.h }); return; }
+      } else if (init.instant) {
+        // Snip Area: releasing the mouse captures straight away, like the Windows Snipping Tool.
+        if (confirm(rect())) return;
+        state.mode = 'idle';
       } else {
         state.mode = 'selected';
       }

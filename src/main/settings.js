@@ -9,7 +9,7 @@ const DEFAULTS = {
   'hotkeys.window': 'Ctrl+Shift+W',
   'hotkeys.record': 'Ctrl+Shift+R',
   afterCapture: 'editor',
-  launchAtLogin: false,
+  launchAtLogin: true,
   replacePrintScreen: false,
   printScreenBackup: null,
   copyToClipboard: false,
@@ -20,6 +20,9 @@ const DEFAULTS = {
 
 const events = new EventEmitter();
 let cache = null;
+// Version 2 made "Start with Windows" the default. Older files always stored the old default (false), so they are
+// carried over to the new default once; the user's later choice is kept because saves then include the version.
+const SETTINGS_VERSION = 2;
 
 function file() {
   return path.join(app.getPath('userData'), 'settings.json');
@@ -32,6 +35,8 @@ function load() {
     saved = JSON.parse(fs.readFileSync(file(), 'utf8'));
   } catch {}
   cache = { ...DEFAULTS, ...saved };
+  if ((saved.settingsVersion || 0) < 2) cache.launchAtLogin = DEFAULTS.launchAtLogin;
+  cache.settingsVersion = SETTINGS_VERSION;
   return cache;
 }
 

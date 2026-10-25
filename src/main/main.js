@@ -20,6 +20,17 @@ app.setAppUserModelId('com.snipsnapstitch.app');
 // a process spawn (about 2x faster on this machine) and idle memory roughly halves. SSS_ISOLATED=1 turns this off.
 if (!process.env.SSS_ISOLATED) app.commandLine.appendSwitch('process-per-site');
 
+// Installer warm-up (tools/installer.nsh): start Chromium once (browser, GPU and renderer processes) and quit, so antivirus
+// scans the new exe and DLLs while the installer still shows progress rather than on the user's first launch.
+if (process.argv.includes('--prewarm')) {
+  setTimeout(() => app.exit(0), 30000);
+  app.whenReady().then(() => {
+    const win = new BrowserWindow({ show: false });
+    win.loadURL('about:blank').catch(() => {}).finally(() => app.quit());
+  });
+  return;
+}
+
 const settings = require('./settings');
 const windows = require('./windows');
 
