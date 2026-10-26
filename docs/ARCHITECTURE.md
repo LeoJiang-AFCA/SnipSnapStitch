@@ -1,6 +1,7 @@
 # Architecture
 
-Electron 31 (Node 20), plain JavaScript, CommonJS in main/preload, no bundler and no UI framework. Every window uses
+Electron 31 (Node 20), plain JavaScript, CommonJS in main/preload and no UI framework. There is no bundler in development;
+packaged builds bundle `src/main` into a single `main.js` with esbuild (`tools/package.js`). Every window uses
 `contextIsolation: true`, `nodeIntegration: false` and `sandbox: true` with its own preload in `src/preload/`.
 
 ```
@@ -17,18 +18,20 @@ docs/           design notes
 | File | Role |
 |---|---|
 | `main.js` | Startup: app name / AppUserModelId, pins userData to `%APPDATA%\snipsnapstitch`, `process-per-site`, `--prewarm` (installer warm-up: hidden window, then quit), login item (`--hidden`), registers IPC and modules |
-| `windows.js` | Creates and pools windows (library, editor, settings, recorder setup) |
+| `windows.js` | Creates and pools windows (library, editor, settings, recorder setup); keeps one hidden spare editor loaded |
 | `tray.js`, `shortcuts.js` | Tray menu; global hotkeys (Region `Ctrl+Shift+S`, Record `Ctrl+Shift+R`, Fullscreen `Ctrl+Shift+F`) and optional Print Screen |
 | `printscreen.js` | Optional "Print Screen opens SSS": sets HKCU `Control Panel\Keyboard\PrintScreenKeyForSnippingEnabled` to 0, stores the original in settings (`printScreenBackup`), restores it when unticked and on quit |
 | `settings.js` | JSON settings in userData (`hotkeys.*`, `afterCapture`, `launchAtLogin`, `replacePrintScreen`, `copyToClipboard`, `captureCursor`, `delaySeconds`, `saveFolder`, …) |
 | `store.js` | Library store: `<id>.png`, `.orig.png`, `.thumb.jpg`, `.annot.json`, `index.json` (a corrupt index is backed up as `.corrupt`) |
-| `capture.js` | Region / fullscreen / window / scrolling capture sessions, overlays, scroll session loop |
+| `capture.js` | Region / fullscreen / window / scrolling capture sessions, overlays, scroll session loop; screen grabs (native, with `desktopCapturer` fallback) |
 | `capture-util.js` | **Pure** logic: rect/DPI helpers, `staticRows`, `detectScrollOffset`, `ScrollStitcher`, cursor patching, `sameIgnoringBoxes`, overlay-bar detection |
 | `frame-stream.js` | ~30 fps desktop video stream of the selected rect (getUserMedia) used by scroll capture; own partition `sss-framestream` |
 | `scroll-ui.js`, `winbounds.js` | Floating scroll-capture control bar; PowerShell/user32 helper for wheel input, cursor position and window list |
 | `recorder.js`, `recorder-prefs.js` | Video recorder (worker window, partition `recorder-capture`); prefs logic is a pure module (`PREFS_VERSION` migration) |
 | `video-optimizer.js` | ffmpeg-static based "make smaller" (H.264 MP4); ffmpeg is unpacked from the asar |
 | `library-ipc.js`, `editor-ipc.js` | IPC for the library and editor windows; `sss://` protocol serves files, thumbnails and MP4s |
+| `perf.js` | Opt-in timing log (`--perf` or `SSS_PERF=1`): start-up marks and capture latency, written to `<userData>\perf.log` |
+| `transparent.js` | `keepTransparent(win)`: re-applies the transparent background of windows that share the renderer process |
 
 The editor lives in `src/renderer/editor` (canvas rendering, tools, `core/` model/geometry/history – pure and unit-tested).
 Library, overlay, recorder, scrollbar and settings windows are plain HTML/CSS/JS pages.
@@ -36,7 +39,16 @@ Library, overlay, recorder, scrollbar and settings windows are plain HTML/CSS/JS
 ## Key design decisions
 - **One shared renderer (`process-per-site`)**: roughly halves idle memory and speeds up opening the editor/recorder. The frame
   stream and recorder worker use their own partitions so a busy page cannot jank capture. `SSS_ISOLATED=1` reverts to per-window processes.
+  Caveat: Electron only gives the *first* page in a renderer process a transparent background, so every transparent
+  window (overlays, recorder region/border/bar, scroll-capture helpers) must call `keepTransparent(win)` (`transparent.js`),
+  otherwise it renders solid white.
 - **No native rewrite**: window spawn cost was reduced with pooled/pre-warmed windows and a shared process instead.
+- **Native screen grab** (`node-screenshots`, a prebuilt N-API module of ~0.7 MB): all displays are captured in parallel
+  (~0.5 s for three monitors, conversion included). `desktopCapturer` captures every screen on each call, which took ~2 s
+  for three monitors.
+  Monitors are matched to Electron displays by physical origin and size. Anything unexpected falls back to `desktopCapturer`,
+  and `SSS_NO_NATIVE_CAPTURE=1` forces it. The `.node` file is unpacked from the asar. Neither path includes the pointer
+  (`captureCursor` draws it).
 - **Cursor removal**: Chromium desktop capture cannot hide the pointer, so the pointer box is located per frame and rows are
   inpainted from neighbouring frames in the stitcher (auto-scroll also parks the pointer away).
 - **Fixed side columns** (sidebars, minimaps) are detected and shown once at the top of a stitched image.
@@ -74,7 +86,10 @@ Library, overlay, recorder, scrollbar and settings windows are plain HTML/CSS/JS
 
 ## Startup and lazy loading
 Goal: a snip-only user pays only for region capture. At launch the app creates the tray, hotkeys, IPC handlers, and a small
-pool of hidden overlay windows (one per display, for instant Snip Area). Everything else loads on first use:
+pool of hidden overlay windows (one per display, for instant Snip Area). Once the app is idle, the native capture module
+loads. When "After capture" is the editor (the default), a hidden **spare editor** loads 10 s after start. A capture then
+sends it `editor:open` and shows it once it answers `editor:ready` (~0.2–0.4 s from mouse release instead of ~1 s); a new
+spare replaces it after use. Everything else loads on first use:
 - **Scroll Capture**: `scroll-ui.js` and `frame-stream.js` are required when the capture starts. Their windows load while the
   user picks the area; the PowerShell helper (`winbounds.js`) starts at the same point and stops itself after 2 idle minutes.
   An unused pre-warmed frame-stream host is destroyed when the capture ends.

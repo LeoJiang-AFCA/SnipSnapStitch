@@ -29,7 +29,11 @@ python tools\build-icon.py      # regenerate assets\icon*.png/.ico from assets\i
     INTEGRITY/ELECTRONASAR resource is stripped (via `resedit`). Enabling the asar-integrity fuse later would undo this.
     It then sets the exe fuses (`@electron/fuses`; check with `npx @electron/fuses read --app <exe>`). Their values are
     fixed, so they don't change the exe between releases.
-- Env switches: `SSS_ISOLATED=1` (one renderer per window), `--hidden` (start in tray), `--user-data-dir=<dir>` (isolated profile).
+- Env switches: `SSS_ISOLATED=1` (one renderer per window), `--hidden` (start in tray), `--user-data-dir=<dir>` (isolated profile),
+  `--perf` or `SSS_PERF=1` (timing log: console and `<userData>\perf.log`), `SSS_NO_NATIVE_CAPTURE=1` (use `desktopCapturer`).
+- `tools/package.js` bundles `src/main` into one `main.js` with esbuild (`afterCopy`; `electron`, `ffmpeg-static` and
+  `node-screenshots` stay external). `npm start` and the tests run the unbundled sources. The `node-screenshots` `.node`
+  binary is unpacked from the asar like ffmpeg (both `tools/package.js` and the `build.asarUnpack` list).
 - Don't stop a running SnipSnapStitch to test; launch with an isolated `--user-data-dir`.
 
 ## Releasing
@@ -49,6 +53,9 @@ python tools\build-icon.py      # regenerate assets\icon*.png/.ico from assets\i
   - frame-stream fps: needs an animated window (a static screen yields one frame); use `encodeURIComponent` for data URLs.
   - Print Screen: register via `shortcuts.js`, send the key with `keybd_event(0x2C)` from PowerShell, check with `reg query`.
   - editor smoke: `store.addCapture` then `windows.openEditor(id)`, inspect the DOM via `executeJavaScript`.
+  - packaged build: start `dist\…\SnipSnapStitch.exe --remote-debugging-port=<port> --user-data-dir=<tmp> --perf` and drive
+    it over the DevTools protocol (`libraryApi.capture('fullscreen'|'window')`, `Input.dispatchMouseEvent` on the overlay).
+    Window capture doesn't touch the clipboard; Snip Area always copies.
   - Always check for orphaned `electron.exe` processes afterwards.
 
 ## Gotchas
@@ -56,12 +63,19 @@ python tools\build-icon.py      # regenerate assets\icon*.png/.ico from assets\i
 - `desktopCapturer` thumbnail sizes must be integers.
 - After a crash the Print Screen registry value stays 0 until the app next starts with the option off or quits normally.
 - `@electron/packager` is pinned to v18 (v20 needs Node ≥ 20.11).
+- Electron 40+ downloads its binary with `@electron/get` v5, which needs Node ≥ 22.12. Upgrading Electron therefore means
+  upgrading Node first; it also changes the exe hash once (see the antivirus note above).
 
 ## Recorder notes
 - Defaults: 15 fps, "optimize to smaller video when finished" on (prefs version 3 migrates older saved prefs once).
 - Optimizer: ffmpeg-static H.264 MP4 with presets via a dialog; "Make video smaller…" is also available in the library.
 
 ## Performance notes
-- Library window ready ≈0.9 s; editor open 300–400 ms with the shared renderer. Idle memory ≈480–560 MB with `process-per-site`.
+- Measure with `--perf` (packaged or dev): `startup …` marks are from process start, and each capture logs its steps
+  (`snip#N`: windows hidden → screen grabbed → overlay on screen; `after-selection#N`: cropped → saved → copied → editor).
+- Packaged, warm start: tray and hotkeys ready ≈0.45–0.6 s. Snip Area: Print Screen → overlay ≈0.55 s on one display and
+  ≈1.2–1.5 s on three (was 2.7–3.4 s with `desktopCapturer`). Mouse release → editor on screen ≈0.15–0.45 s with the spare
+  editor.
+- Library window ready ≈0.9 s. Idle memory ≈480–560 MB with `process-per-site`.
 - Remaining main-thread costs: PNG encode of very tall stitched images (~1.5 s) and the clipboard write (~0.9 s).
 - Tried without useful gain: `--in-process-gpu`, `--disable-gpu`, `--renderer-process-limit`, `--disable-site-isolation-trials`.

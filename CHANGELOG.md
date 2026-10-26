@@ -32,6 +32,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
   instead of at launch (idle: 6 → 4 processes, ~515 → ~325 MB). Snip Area keeps its pre-warmed overlays.
 - Smaller download: only the en-US Chromium locale is shipped (~38 MB less), and private dev notes are no longer packed
   into `app.asar`.
+- **Faster Snip Area / Print Screen**: screens are captured natively, all at once, instead of through Chromium. Print
+  Screen → selection overlay is about twice as fast: ~2.7–3.4 s → ~1.2–1.5 s with three monitors, and ~1 s → ~0.55 s
+  with one.
+- **The editor appears almost immediately after a snip** (~0.2–0.4 s instead of up to ~1.6 s): a hidden editor is kept
+  ready in the background.
+- Slightly faster start-up: the app's main code ships as one bundled file.
+- `--perf` (or `SSS_PERF=1`) writes a timing log to `perf.log` in the data folder for diagnosing slow starts or captures.
+
+### Fixed
+- **Video recording: white screen over the recording area.** While picking the area to record and during recording, the
+  selection overlay and the recording frame were drawn as solid white instead of see-through. Transparent windows that
+  share the app's single renderer process lost their transparent background; it is now re-applied as they load (also
+  fixes white corners on the recording/scroll-capture control bars).
 
 ### Security
 - Hardening from a security review (no exploitable issues were found): all windows are sandboxed; IPC is accepted only

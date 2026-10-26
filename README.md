@@ -63,7 +63,7 @@ Issues and pull requests are welcome — please read [CONTRIBUTING.md](CONTRIBUT
 Report security problems privately as described in [SECURITY.md](SECURITY.md).
 
 ## License
-[MIT](LICENSE) © Leo Jiang. Bundled third-party components (Electron, FFmpeg) are listed in
+[MIT](LICENSE) © Leo Jiang. Bundled third-party components (Electron, FFmpeg, node-screenshots) are listed in
 [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
 
 Snagit is a trademark of TechSmith Corporation; SnipSnapStitch is an independent project and is not affiliated with TechSmith.

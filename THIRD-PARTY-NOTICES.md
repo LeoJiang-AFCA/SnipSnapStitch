@@ -7,6 +7,7 @@ SnipSnapStitch is licensed under the MIT License (see `LICENSE`). It depends on,
 | [Electron](https://github.com/electron/electron) | MIT | Runtime (includes Chromium and Node.js, each under their own licenses) |
 | [ffmpeg-static](https://github.com/eugeneware/ffmpeg-static) | GPL-3.0-or-later (package scripts) | Downloads a prebuilt FFmpeg binary |
 | [FFmpeg](https://ffmpeg.org/) binary shipped by ffmpeg-static | GPL-3.0 (that build) | Used only as a separate process (`ffmpeg.exe`) for the optional "make video smaller" feature |
+| [node-screenshots](https://github.com/nashaofu/node-screenshots) | Apache-2.0 (package metadata; its `LICENSE` file is MIT) | Prebuilt native module for fast screen capture |
 
 ## FFmpeg
 
