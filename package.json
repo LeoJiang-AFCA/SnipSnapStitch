@@ -24,7 +24,7 @@
     "executableName": "SnipSnapStitch",
     "directories": { "output": "release", "buildResources": "assets" },
     "files": ["src/**/*", "assets/icon.ico", "assets/icon.png", "assets/icon-32.png", "assets/icon-48.png", "package.json"],
-    "asarUnpack": ["**/ffmpeg-static/ffmpeg.exe"],
+    "asarUnpack": ["**/ffmpeg-static/ffmpeg.exe", "**/node-screenshots-*/*.node"],
     "compression": "normal",
     "publish": null,
     "win": {
@@ -49,6 +49,7 @@
     "resedit": "^2.0.3"
   },
   "dependencies": {
-    "ffmpeg-static": "^5.3.0"
+    "ffmpeg-static": "^5.3.0",
+    "node-screenshots": "^0.2.8"
   }
 }

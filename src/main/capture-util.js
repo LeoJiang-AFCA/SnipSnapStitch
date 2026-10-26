@@ -85,6 +85,20 @@ function distToSegment(px, py, ax, ay, bx, by) {
   return Math.hypot(px - (ax + t * dx), py - (ay + t * dy));
 }
 
+// Swaps R and B of 4-byte pixels in place (RGBA <-> BGRA), e.g. node-screenshots' RGBA into Windows' native BGRA.
+function swapRedBlue(buf) {
+  if (buf.byteOffset % 4 === 0) {
+    const px = new Uint32Array(buf.buffer, buf.byteOffset, buf.length >> 2);
+    for (let i = 0; i < px.length; i++) {
+      const v = px[i];
+      px[i] = (v & 0xff00ff00) | ((v & 0xff) << 16) | ((v >>> 16) & 0xff);
+    }
+  } else {
+    for (let i = 0; i + 3 < buf.length; i += 4) { const r = buf[i]; buf[i] = buf[i + 2]; buf[i + 2] = r; }
+  }
+  return buf;
+}
+
 // Draws a simple arrow cursor (white fill, black outline) with its tip at (cx, cy) into the bitmap, in place.
 function drawCursorArrow(bmp, cx, cy, scale = 1) {
   const { data, width, height } = bmp;
@@ -589,6 +603,7 @@ module.exports = {
   cssRectToPhysical,
   toLocalRect,
   drawCursorArrow,
+  swapRedBlue,
   detectScrollOffset,
   staticRows,
   sameIgnoringBoxes,

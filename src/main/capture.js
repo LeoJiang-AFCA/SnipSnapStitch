@@ -173,7 +173,44 @@ function physicalOrigin(display) {
   return { x: Math.round(display.bounds.x * display.scaleFactor), y: Math.round(display.bounds.y * display.scaleFactor) };
 }
 
-async function grabDisplay(display, withCursor) {
+// ---- native screen grab ----------------------------------------------------------------------------------------------
+// node-screenshots (N-API, prebuilt) grabs all displays in parallel in ~0.2 s, while every desktopCapturer call captures
+// every screen (~0.6 s per call with three 4K-class displays). Pixels are identical; desktopCapturer stays as the fallback.
+// SSS_NO_NATIVE_CAPTURE=1 turns it off.
+let nativeShots; // undefined: not loaded yet, null: unavailable
+
+function nativeCapture() {
+  if (nativeShots === undefined) {
+    nativeShots = null;
+    if (process.platform === 'win32' && !process.env.SSS_NO_NATIVE_CAPTURE) {
+      try { nativeShots = require('node-screenshots'); } catch (err) { console.warn('[capture] native capture unavailable:', err.message); }
+    }
+  }
+  return nativeShots;
+}
+
+// node-screenshots returns RGBA; nativeImage and the overlay use BGRA (Windows' native order).
+// Resolves { bitmap (BGRA), width, height } in physical pixels, or null to use desktopCapturer instead.
+async function grabNative(display, monitors) {
+  const mod = nativeCapture();
+  if (!mod) return null;
+  try {
+    const o = physicalOrigin(display);
+    const mon = (monitors || mod.Monitor.all()).find((m) => Math.abs(m.x() - o.x) <= 2 && Math.abs(m.y() - o.y) <= 2);
+    if (!mon) return null;
+    const img = await mon.captureImage();
+    const want = physicalSize(display);
+    if (Math.abs(img.width - want.w) > 2 || Math.abs(img.height - want.h) > 2) return null;
+    const bitmap = await img.toRaw();
+    if (bitmap.length !== img.width * img.height * 4) return null;
+    return { bitmap: util.swapRedBlue(bitmap), width: img.width, height: img.height };
+  } catch (err) {
+    console.warn('[capture] native capture failed, using desktopCapturer:', err.message);
+    return null;
+  }
+}
+
+async function grabWithDesktopCapturer(display) {
   const displays = screen.getAllDisplays();
   const size = physicalSize(display);
   let source = null;
@@ -190,24 +227,35 @@ async function grabDisplay(display, withCursor) {
     else await new Promise((r) => setTimeout(r, 150));
   }
   if (!source) throw new Error('screen capture returned no image for display ' + display.id);
-
-  let image = source.thumbnail;
+  const image = source.thumbnail;
   const { width, height } = image.getSize();
-  const bitmap = image.toBitmap();
+  return { image, bitmap: image.toBitmap(), width, height };
+}
+
+// monitors: node-screenshots Monitor list shared by grabAll (looked up per call otherwise).
+async function grabDisplay(display, withCursor, monitors) {
+  const shot = (await grabNative(display, monitors)) || (await grabWithDesktopCapturer(display));
+  const { bitmap, width, height } = shot;
+  let image = shot.image || null;
   const sx = width / display.bounds.width;
   if (withCursor) {
     const c = screen.getCursorScreenPoint();
     const b = display.bounds;
     if (util.pointInRect(c, b)) {
       util.drawCursorArrow({ data: bitmap, width, height }, (c.x - b.x) * sx, (c.y - b.y) * (height / b.height), sx);
-      image = nativeImage.createFromBitmap(bitmap, { width, height });
+      image = null;
     }
   }
+  if (!image) image = nativeImage.createFromBitmap(bitmap, { width, height });
   return { display, image, bitmap, width, height, scale: sx };
 }
 
 async function grabAll(withCursor) {
   const displays = screen.getAllDisplays();
+  const mod = nativeCapture();
+  let monitors = null;
+  try { if (mod) monitors = mod.Monitor.all(); } catch {}
+  if (monitors) return Promise.all(displays.map((d) => grabDisplay(d, withCursor, monitors)));
   const shots = [];
   for (const d of displays) shots.push(await grabDisplay(d, withCursor));
   return shots;
@@ -336,6 +384,9 @@ async function warmUp() {
         pool.push(info);
         await Promise.race([info.loadedPromise, new Promise((r) => setTimeout(r, 6000).unref())]);
       } catch (err) { console.error('[capture] overlay pool:', err); break; }
+    }
+    if (nativeShots === undefined && !busy) {
+      nativeCapture(); // first load of the native module takes ~0.5 s, so it is done while idle
     }
   } finally {
     warming = false;

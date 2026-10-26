@@ -39,7 +39,8 @@ packager({
   out: path.join(root, 'dist'),
   overwrite: true,
   icon: path.join(root, 'assets', 'icon.ico'),
-  asar: { unpack: '**/ffmpeg-static/ffmpeg.exe' },
+  // Native binaries can't run from inside app.asar (Electron would copy them to %TEMP% on every start).
+  asar: { unpack: '{**/ffmpeg-static/ffmpeg.exe,**/node-screenshots-*/*.node}' },
   prune: true,
   // The UI is English only and Chromium falls back to en-US, so the other ~37 MB of locale packs are dropped.
   // (Library dates use the Windows regional locale instead; see library.js.)

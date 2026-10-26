@@ -231,3 +231,17 @@ test('drawCursorArrow paints pixels near the tip only', () => {
   assert.strictEqual(px(11, 14), 255);
   assert.strictEqual(px(35, 35), 0);
 });
+
+test('swapRedBlue turns RGBA into BGRA in place, aligned or not', () => {
+  const rgba = [10, 20, 30, 255, 200, 100, 0, 128, 1, 2, 3, 4];
+  const bgra = [30, 20, 10, 255, 0, 100, 200, 128, 3, 2, 1, 4];
+  const aligned = Buffer.alloc(rgba.length); // not pooled: byteOffset 0
+  Buffer.from(rgba).copy(aligned);
+  assert.strictEqual(u.swapRedBlue(aligned), aligned);
+  assert.deepStrictEqual([...aligned], bgra);
+  const backing = Buffer.alloc(rgba.length + 1);
+  const odd = backing.subarray(1); // byteOffset 1: cannot be viewed as 32-bit pixels
+  Buffer.from(rgba).copy(odd);
+  u.swapRedBlue(odd);
+  assert.deepStrictEqual([...odd], bgra);
+});
