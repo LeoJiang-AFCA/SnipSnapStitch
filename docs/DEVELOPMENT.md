@@ -38,7 +38,7 @@ python tools\build-icon.py      # regenerate assets\icon*.png/.ico from assets\i
 
 ## Releasing
 1. Update `version` in `package.json` and move *Unreleased* notes to a new section in `CHANGELOG.md`.
-2. Commit, then tag and push: `git tag v0.1.0; git push origin v0.1.0`.
+2. Commit, then tag and push: `git tag v1.0.0; git push origin v1.0.0`.
 3. The **Release** workflow tests, builds the installer, and creates a **draft** GitHub release with a SHA-256 checksum. Review and publish it.
 
 ## Testing approach

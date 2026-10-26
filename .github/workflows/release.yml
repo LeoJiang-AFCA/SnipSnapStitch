@@ -1,6 +1,6 @@
 name: Release
 
-# Push a tag like v0.1.0 to build the installer and publish a GitHub release.
+# Push a tag like v1.0.0 to build the installer and publish a GitHub release.
 on:
   push:
     tags: ['v*.*.*']

@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-10-26
+
+First stable release.
+
 ### Added
 - **Mode bar on Snip Area** (e.g. Print Screen): Snip Area · Scroll Capture · Record Video · Full Screen · ✕ at the top of
   the screen. Scroll Capture continues in the same overlay (no new screenshot), Full Screen saves the screen as it was when
@@ -68,5 +72,6 @@ First public release.
 - Tray icon, global hotkeys, Settings window, optional "Start with Windows" and optional "Use Print Screen key".
 - Portable single-file Windows executable.
 
-[Unreleased]: https://github.com/LeoJiang-AFCA/SnipSnapStitch/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/LeoJiang-AFCA/SnipSnapStitch/releases/tag/v0.1.0
+[Unreleased]: https://github.com/LeoJiang-AFCA/SnipSnapStitch/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/LeoJiang-AFCA/SnipSnapStitch/compare/cfc06bd...v1.0.0
+[0.1.0]: https://github.com/LeoJiang-AFCA/SnipSnapStitch/tree/cfc06bd
