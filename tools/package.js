@@ -31,6 +31,27 @@ function setFuses(exePath) {
   });
 }
 
+// Bundles the main-process modules into one src/main/main.js (lazy require()s stay lazy: esbuild wraps each module and runs
+// it on first use), so start-up skips ~20 module lookups and reads inside app.asar. __dirname is unchanged (still
+// src/main), so page and preload paths still resolve. Native and binary packages stay ordinary node_modules requires.
+async function bundleMain(buildPath) {
+  const dir = path.join(buildPath, 'src', 'main');
+  const tmp = path.join(buildPath, 'main.bundle.js');
+  await require('esbuild').build({
+    entryPoints: [path.join(dir, 'main.js')],
+    outfile: tmp,
+    bundle: true,
+    platform: 'node',
+    format: 'cjs',
+    target: 'node20',
+    external: ['electron', 'ffmpeg-static', 'node-screenshots'],
+    legalComments: 'none',
+    logLevel: 'warning',
+  });
+  for (const f of fs.readdirSync(dir)) if (f.endsWith('.js')) fs.rmSync(path.join(dir, f));
+  fs.renameSync(tmp, path.join(dir, 'main.js'));
+}
+
 packager({
   dir: root,
   name: 'SnipSnapStitch',
@@ -42,6 +63,7 @@ packager({
   // Native binaries can't run from inside app.asar (Electron would copy them to %TEMP% on every start).
   asar: { unpack: '{**/ffmpeg-static/ffmpeg.exe,**/node-screenshots-*/*.node}' },
   prune: true,
+  afterCopy: [(buildPath, _version, _platform, _arch, done) => { bundleMain(buildPath).then(() => done(), done); }],
   // The UI is English only and Chromium falls back to en-US, so the other ~37 MB of locale packs are dropped.
   // (Library dates use the Windows regional locale instead; see library.js.)
   afterExtract: [(buildPath, _version, _platform, _arch, done) => {
