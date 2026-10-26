@@ -11,7 +11,7 @@ function createHost() {
     width: 200,
     height: 200,
     // A separate storage partition keeps the capture loop in its own renderer process even with process-per-site.
-    webPreferences: { preload: PRELOAD, contextIsolation: false, sandbox: false, nodeIntegration: false, backgroundThrottling: false, partition: 'sss-framestream' },
+    webPreferences: { preload: PRELOAD, contextIsolation: true, sandbox: true, nodeIntegration: false, backgroundThrottling: false, partition: 'sss-framestream' },
   });
   return { win, loaded: win.loadFile(PAGE) };
 }

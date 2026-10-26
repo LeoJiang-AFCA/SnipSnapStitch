@@ -33,6 +33,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 - Smaller download: only the en-US Chromium locale is shipped (~38 MB less), and private dev notes are no longer packed
   into `app.asar`.
 
+### Security
+- Hardening from a security review (no exploitable issues were found): all windows are sandboxed; IPC is accepted only
+  from the app's own pages; navigation, pop-ups and `<webview>` are blocked; the `sss://` scheme no longer bypasses the page
+  security policy; library file paths and annotation reads are checked against the index; the editor can only delete its
+  own capture; `reg.exe`/PowerShell are run by full path; the video optimizer only reads local files with a fixed demuxer;
+  the exe has the RunAsNode, `NODE_OPTIONS` and `--inspect` fuses off and only loads the app from `app.asar`.
+
 ## [0.1.0] - 2026-10-23
 
 First public release.

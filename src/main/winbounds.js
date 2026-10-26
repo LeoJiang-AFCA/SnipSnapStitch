@@ -2,9 +2,12 @@
 // Win32 helper: a persistent PowerShell process (user32/dwmapi via Add-Type) used for enumerating top-level
 // window rectangles and injecting mouse-wheel input. All coordinates are PHYSICAL screen pixels.
 // On non-Windows platforms every function resolves to an "unavailable" value instead of throwing.
+const path = require('path');
 const { spawn } = require('child_process');
 
 const IS_WIN = process.platform === 'win32';
+// Full path, so a powershell.exe in the current directory is never picked up.
+const POWERSHELL_EXE = path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe');
 
 const CSHARP = String.raw`
 using System;
@@ -149,7 +152,7 @@ function start() {
   if (proc) return;
   const encoded = Buffer.from(PS_SCRIPT, 'utf16le').toString('base64');
   const child = spawn(
-    'powershell.exe',
+    POWERSHELL_EXE,
     ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-EncodedCommand', encoded],
     { windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'] }
   );

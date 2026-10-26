@@ -27,6 +27,8 @@ python tools\build-icon.py      # regenerate assets\icon*.png/.ico from assets\i
     `main.js` opens one hidden window and quits, so the scan happens during install (first launch 21.9 s → 1.9 s).
   - `tools/package.js` keeps the exe byte-identical across our releases: `appVersion` is the Electron version and the
     INTEGRITY/ELECTRONASAR resource is stripped (via `resedit`). Enabling the asar-integrity fuse later would undo this.
+    It then sets the exe fuses (`@electron/fuses`; check with `npx @electron/fuses read --app <exe>`). Their values are
+    fixed, so they don't change the exe between releases.
 - Env switches: `SSS_ISOLATED=1` (one renderer per window), `--hidden` (start in tray), `--user-data-dir=<dir>` (isolated profile).
 - Don't stop a running SnipSnapStitch to test; launch with an isolated `--user-data-dir`.
 

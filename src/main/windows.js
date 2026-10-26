@@ -16,7 +16,7 @@ function baseOptions(preload, extra = {}) {
       preload: path.join(root, 'preload', preload),
       contextIsolation: true,
       nodeIntegration: false,
-      sandbox: false,
+      sandbox: true,
     },
     ...extra,
   };
@@ -82,4 +82,10 @@ function getMainWindow() {
   return wins.library && !wins.library.isDestroyed() ? wins.library : null;
 }
 
-module.exports = { openLibrary, openSettings, openEditor, openRecorder, getMainWindow };
+// The editor window showing item `id`, if one is open.
+function getEditor(id) {
+  const win = editors.get(id);
+  return win && !win.isDestroyed() ? win : null;
+}
+
+module.exports = { openLibrary, openSettings, openEditor, openRecorder, getMainWindow, getEditor };

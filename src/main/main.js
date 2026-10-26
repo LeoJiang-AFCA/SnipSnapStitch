@@ -31,6 +31,9 @@ if (process.argv.includes('--prewarm')) {
   return;
 }
 
+// Before any module registers IPC handlers.
+require('./security').install();
+
 const settings = require('./settings');
 const windows = require('./windows');
 

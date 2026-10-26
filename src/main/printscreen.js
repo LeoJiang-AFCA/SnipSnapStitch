@@ -2,11 +2,14 @@
 // Windows routes Print Screen to the Snipping Tool through a per-user setting; while the option is on that setting is
 // switched off (the original value is remembered) and the app registers Print Screen itself (see shortcuts.js).
 // The setting is put back when the option is turned off and when the app quits.
+const path = require('path');
 const { execFileSync } = require('child_process');
 const settings = require('./settings');
 
 const KEY = 'HKCU\\Control Panel\\Keyboard';
 const NAME = 'PrintScreenKeyForSnippingEnabled';
+// Full path, so a reg.exe in the current directory is never picked up.
+const REG_EXE = path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'reg.exe');
 
 // Value of the registry setting from `reg query` output; null when it is not set.
 function parseQuery(out) {
@@ -14,7 +17,7 @@ function parseQuery(out) {
   return m ? parseInt(m[1], 16) : null;
 }
 
-const reg = (args) => execFileSync('reg', args, { encoding: 'utf8', windowsHide: true, stdio: ['ignore', 'pipe', 'ignore'] });
+const reg = (args) => execFileSync(REG_EXE, args, { encoding: 'utf8', windowsHide: true, stdio: ['ignore', 'pipe', 'ignore'] });
 
 function readValue() {
   try { return parseQuery(reg(['query', KEY, '/v', NAME])); } catch { return null; }

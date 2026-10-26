@@ -1,7 +1,7 @@
 # Architecture
 
 Electron 31 (Node 20), plain JavaScript, CommonJS in main/preload, no bundler and no UI framework. Every window uses
-`contextIsolation: true` and `nodeIntegration: false` with its own preload in `src/preload/`.
+`contextIsolation: true`, `nodeIntegration: false` and `sandbox: true` with its own preload in `src/preload/`.
 
 ```
 src/main/       main process
@@ -59,8 +59,17 @@ Library, overlay, recorder, scrollbar and settings windows are plain HTML/CSS/JS
   other tools return to Pan on Esc.
 
 ## Security model
-- Windows load only local pages; no remote content or network access in the app.
+- Windows load only local pages; no remote content or network access in the app. All renderers are sandboxed, so preloads
+  can only use `contextBridge`, `ipcRenderer` and `webUtils` (no Node modules, no relative `require`).
 - Preloads expose narrow `window.*Api` surfaces; all privileged work happens in the main process via `ipcMain.handle`.
+- `security.js` (installed first in `main.js`) drops IPC from any frame that isn't one of our pages (`file://` under
+  `src/renderer`) and blocks renderer navigation, `window.open` and `<webview>`. Register IPC after it, as usual, with
+  `ipcMain.handle/on`; `removeListener(channel, fn)` keeps working.
+- Library ids are validated against `index.json` before any file is touched; index entries whose `file` isn't a plain
+  `<id>.<ext>` name are ignored. The editor may only delete the item it has open.
+- Child processes use absolute paths (`%SystemRoot%\System32\reg.exe`, Windows PowerShell); ffmpeg reads only local files
+  with the demuxer implied by the extension, so a disguised playlist can't pull in other files.
+- Packaged exe fuses (`tools/package.js`): RunAsNode, `NODE_OPTIONS` and `--inspect` off, OnlyLoadAppFromAsar on.
 - The only registry write is the optional Print Screen setting (restored on untick/quit).
 
 ## Startup and lazy loading

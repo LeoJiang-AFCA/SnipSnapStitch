@@ -18,6 +18,9 @@ const PRESETS = {
   smallest: { crf: 33, maxSide: 1280 }, // visibly softer, smallest
 };
 const MIN_GAIN = 0.9; // keep the result only if it is under 90% of the original size
+// Inputs are opened with the demuxer their extension implies and from local files only, so a library file whose
+// content is e.g. a playlist can't make ffmpeg read other files or URLs.
+const INPUT_FORMATS = { '.webm': 'matroska', '.mkv': 'matroska', '.mp4': 'mov', '.mov': 'mov' };
 
 const jobs = new Map(); // id -> { child, cancelled, progress }
 const queue = [];
@@ -38,8 +41,10 @@ function buildArgs(input, output, opts = {}) {
   } else {
     filters.push('scale=trunc(iw/2)*2:trunc(ih/2)*2');
   }
+  const format = INPUT_FORMATS[path.extname(input).toLowerCase()];
+  if (!format) throw new Error('Unsupported video format: ' + path.extname(input));
   return [
-    '-hide_banner', '-nostdin', '-y', '-i', input,
+    '-hide_banner', '-nostdin', '-y', '-protocol_whitelist', 'file', '-f', format, '-i', input,
     '-map', '0:v:0', '-map', '0:a:0?',
     '-vf', filters.join(','),
     '-c:v', 'libx264', '-preset', 'medium', '-crf', String(preset.crf), '-pix_fmt', 'yuv420p',

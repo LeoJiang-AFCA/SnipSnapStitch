@@ -18,7 +18,7 @@ let registered = false;
 function registerProtocolScheme() {
   protocol.registerSchemesAsPrivileged([{
     scheme: 'sss',
-    privileges: { standard: true, secure: true, supportFetchAPI: true, stream: true, bypassCSP: true },
+    privileges: { standard: true, secure: true, supportFetchAPI: true, stream: true },
   }]);
 }
 

@@ -84,7 +84,9 @@ const handlers = {
 let registered = false;
 
 // Removes a capture from the library and closes the editor window showing it. opts.confirm asks first.
+// Only the editor that has the item open may delete it.
 async function deleteItem(win, id, opts) {
+  if (!win || require('./windows').getEditor(id) !== win) return false;
   if (opts && opts.confirm) {
     const it = await store.get(id);
     const res = await dialog.showMessageBox(win, {

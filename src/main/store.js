@@ -35,6 +35,13 @@ function p(id, suffix) {
   return path.join(dataDir(), id + suffix);
 }
 
+// Entries name their files, so only accept plain names inside the library folder (ids are base36 + hex, see newId),
+// even if index.json was edited by hand.
+function validEntry(it) {
+  return !!it && typeof it.id === 'string' && /^[0-9a-z]+$/i.test(it.id)
+    && typeof it.file === 'string' && it.file.startsWith(it.id + '.') && /^[\w.-]+$/.test(it.file);
+}
+
 async function atomicWrite(file, data) {
   const tmp = file + '.' + process.pid + '.tmp';
   await fsp.writeFile(tmp, data);
@@ -46,7 +53,8 @@ async function load() {
   await fsp.mkdir(dataDir(), { recursive: true });
   try {
     const parsed = JSON.parse(await fsp.readFile(indexPath(), 'utf8'));
-    items = Array.isArray(parsed) ? parsed : [];
+    items = Array.isArray(parsed) ? parsed.filter(validEntry) : [];
+    if (Array.isArray(parsed) && items.length !== parsed.length) console.warn('[store] ignored invalid index entries:', parsed.length - items.length);
   } catch (e) {
     if (e.code !== 'ENOENT') {
       try { await fsp.copyFile(indexPath(), indexPath() + '.corrupt'); } catch (_) { /* ignore */ }
@@ -269,6 +277,7 @@ async function saveAnnotations(id, obj) {
 }
 
 async function getAnnotations(id) {
+  if (!(await get(id))) return null;
   try {
     return JSON.parse(await fsp.readFile(p(id, '.annot.json'), 'utf8'));
   } catch (_) {

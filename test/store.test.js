@@ -115,6 +115,31 @@ test('annotations round-trip and missing ones read as null', async () => {
   assert.deepEqual(await store.getAnnotations(it.id), { version: 1, objects: [{ t: 'rect' }] });
 });
 
+test('annotations are only read for library items', async () => {
+  const dir = newDir();
+  store.setDataDir(dir);
+  const outside = path.join(path.dirname(dir), path.basename(dir) + '-x.annot.json');
+  fs.writeFileSync(outside, '{"secret":1}');
+  try {
+    assert.equal(await store.getAnnotations('..\\' + path.basename(dir) + '-x'), null);
+  } finally {
+    fs.rmSync(outside, { force: true });
+  }
+});
+
+test('index entries whose file points outside the library are ignored', async () => {
+  const dir = newDir();
+  store.setDataDir(dir);
+  const good = await vid('good');
+  const index = JSON.parse(fs.readFileSync(path.join(dir, 'index.json'), 'utf8'));
+  index.push({ ...good, id: 'evil1', file: '..\\..\\evil.txt' }, { ...good, id: '..', file: '...png' });
+  fs.writeFileSync(path.join(dir, 'index.json'), JSON.stringify(index));
+  store.setDataDir(dir);
+  assert.deepEqual((await store.list()).map((i) => i.id), [good.id]);
+  assert.equal(await store.getFilePath('evil1'), null);
+  assert.equal(await store.remove('..'), false);
+});
+
 test('a corrupt index is backed up and the library starts empty', async () => {
   const dir = newDir();
   fs.writeFileSync(path.join(dir, 'index.json'), '{broken');

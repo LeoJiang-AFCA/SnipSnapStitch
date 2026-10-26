@@ -2,12 +2,13 @@
 const fs = require('fs');
 const path = require('path');
 const { packager } = require('@electron/packager');
+const { flipFuses, FuseVersion, FuseV1Options } = require('@electron/fuses');
 
 const root = path.join(__dirname, '..');
 const electronVersion = require('electron/package.json').version;
 
 // Packager embeds a hash of app.asar in the exe (resource INTEGRITY/ELECTRONASAR), so the exe would change with every code
-// change. It is only checked when the EnableEmbeddedAsarIntegrityValidation fuse is on (we don't set fuses), so drop it.
+// change. It is only checked when the EnableEmbeddedAsarIntegrityValidation fuse is on (it stays off below), so drop it.
 async function stripAsarIntegrity(exePath) {
   const resedit = await require('resedit/cjs').load();
   const exe = resedit.NtExecutable.from(fs.readFileSync(exePath));
@@ -15,6 +16,19 @@ async function stripAsarIntegrity(exePath) {
   for (let i = res.entries.length - 1; i >= 0; i--) if (res.entries[i].type === 'INTEGRITY') res.entries.splice(i, 1);
   res.outputResource(exe);
   fs.writeFileSync(exePath, Buffer.from(exe.generate()));
+}
+
+// Turns off ways to run other code with our (trusted, unchanging) exe: ELECTRON_RUN_AS_NODE, NODE_OPTIONS, --inspect, and
+// a loose resources\app folder taking precedence over app.asar. The values are fixed, so the exe stays the same per release.
+function setFuses(exePath) {
+  return flipFuses(exePath, {
+    version: FuseVersion.V1,
+    [FuseV1Options.RunAsNode]: false,
+    [FuseV1Options.EnableNodeOptionsEnvironmentVariable]: false,
+    [FuseV1Options.EnableNodeCliInspectArguments]: false,
+    [FuseV1Options.OnlyLoadAppFromAsar]: true,
+    [FuseV1Options.EnableEmbeddedAsarIntegrityValidation]: false,
+  });
 }
 
 packager({
@@ -52,5 +66,6 @@ packager({
   win32metadata: { ProductName: 'SnipSnapStitch', FileDescription: 'SnipSnapStitch (SSS)' },
 }).then(async (out) => {
   await stripAsarIntegrity(path.join(out[0], 'SnipSnapStitch.exe'));
+  await setFuses(path.join(out[0], 'SnipSnapStitch.exe'));
   console.log('Built:', out.join(', '));
 }).catch((e) => { console.error(e); process.exit(1); });

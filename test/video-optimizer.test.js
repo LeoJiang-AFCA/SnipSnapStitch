@@ -26,6 +26,21 @@ test('frame rate is capped at 30 and the preset decides crf', () => {
   assert.strictEqual(b[b.indexOf('-crf') + 1], '33');
 });
 
+test('an input that is really a playlist is not followed to other files', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'rs-opt-'));
+  try {
+    const gen = spawnSync(ffmpeg, ['-hide_banner', '-loglevel', 'error', '-f', 'lavfi', '-i', 'testsrc=size=64x48:rate=10:duration=1', '-c:v', 'libx264', path.join(dir, 'other.mkv')]);
+    assert.strictEqual(gen.status, 0, String(gen.stderr));
+    const evil = path.join(dir, 'evil.mp4');
+    fs.writeFileSync(evil, 'ffconcat version 1.0\nfile other.mkv\n');
+    const run = spawnSync(ffmpeg, opt.buildArgs(evil, path.join(dir, 'out.mp4'), {}));
+    assert.notStrictEqual(run.status, 0);
+    assert.throws(() => opt.buildArgs(path.join(dir, 'list.m3u8'), path.join(dir, 'out.mp4')), /Unsupported/);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 for (const [preset, size, maxW] of [['balanced', '321x241', 321], ['smallest', '1921x1081', 1280]]) {
   test(`ffmpeg re-encodes a ${size} source with the ${preset} preset to even dimensions`, () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'rs-opt-'));
