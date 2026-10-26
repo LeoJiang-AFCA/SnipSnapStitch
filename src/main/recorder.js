@@ -15,6 +15,7 @@ const { app, BrowserWindow, ipcMain, screen, desktopCapturer, session, powerSave
 const path = require('path');
 const fs = require('fs');
 const { EventEmitter } = require('events');
+const { keepTransparent } = require('./transparent');
 
 const HTML = path.join(__dirname, '..', 'renderer', 'recorder', 'index.html');
 const PRELOAD = path.join(__dirname, '..', 'preload', 'recorder.js');
@@ -119,6 +120,7 @@ function makeWindow(view, opts, query) {
       autoplayPolicy: 'no-user-gesture-required',
     },
   }, opts));
+  if (opts && opts.transparent) keepTransparent(w);
   w.setMenuBarVisibility(false);
   const loaded = w.loadFile(HTML, { query: Object.assign({ view }, query || {}) });
   return { w, loaded };

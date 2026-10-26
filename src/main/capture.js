@@ -3,6 +3,7 @@ const path = require('path');
 const { app, BrowserWindow, desktopCapturer, screen, ipcMain, clipboard, nativeImage, globalShortcut, dialog } = require('electron');
 const util = require('./capture-util');
 const winbounds = require('./winbounds');
+const { keepTransparent } = require('./transparent');
 
 // Scroll-capture helpers are loaded on first use, so a plain region snip never pays for them.
 const getScrollUI = () => require('./scroll-ui').ScrollUI;
@@ -279,6 +280,7 @@ function spawnOverlay() {
   info.loadedPromise = new Promise((r) => { info.loaded = r; });
   overlayInfo.set(id, info);
 
+  keepTransparent(win);
   win.setMenuBarVisibility(false);
   win.setAlwaysOnTop(true, 'screen-saver');
   win.on('closed', () => {

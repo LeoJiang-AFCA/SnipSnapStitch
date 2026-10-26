@@ -1,6 +1,7 @@
 'use strict';
 const path = require('path');
 const { BrowserWindow, ipcMain } = require('electron');
+const { keepTransparent } = require('./transparent');
 
 const BAR_HTML = path.join(__dirname, '..', 'renderer', 'scrollbar', 'index.html');
 const BAR_PRELOAD = path.join(__dirname, '..', 'preload', 'scrollbar.js');
@@ -31,6 +32,7 @@ function floating(opts) {
     alwaysOnTop: true,
     ...opts,
   });
+  keepTransparent(win);
   win.setAlwaysOnTop(true, 'screen-saver');
   win.setMenuBarVisibility(false);
   // Keeps the helper windows out of the captured frames (Windows 10 2004+).
