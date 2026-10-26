@@ -5,7 +5,7 @@
   const el = {
     shot: $('shot'), dim: $('dim'), hl: $('hl'), hlLabel: $('hl-label'), vline: $('vline'), hline: $('hline'),
     sel: $('sel'), size: $('size'), toolbar: $('toolbar'), loupe: $('loupe'), loupeCanvas: $('loupe-canvas'),
-    swatch: $('swatch'), loupeText: $('loupe-text'), hint: $('hint'), countdown: $('countdown'),
+    swatch: $('swatch'), loupeText: $('loupe-text'), hint: $('hint'), countdown: $('countdown'), modebar: $('modebar'),
   };
 
   // Idle until main pushes the init payload (the window is pre-loaded in a pool).
@@ -59,6 +59,11 @@
   el.hint.textContent = init.hint || '';
   el.hint.hidden = !init.hint;
 
+  // Snip Area: releasing the mouse captures straight away, and the mode bar offers the other capture modes.
+  let instant = !!init.instant;
+  let modes = !!init.modes;
+  document.body.classList.toggle('modes', modes);
+
   const state = {
     mode: 'idle', // idle | drag | selected | move | resize
     l: 0, t: 0, r: 0, b: 0,
@@ -94,6 +99,7 @@
   }
 
   function render() {
+    el.modebar.hidden = !(modes && state.mode === 'idle' && !state.done);
     const showSel = hasSel();
     el.sel.hidden = !showSel;
     el.dim.hidden = showSel;
@@ -172,6 +178,14 @@
   }
 
   function onMove(e) {
+    if (state.mode === 'idle' && e.target.closest && e.target.closest('#modebar')) {
+      // no crosshair or magnifier over the mode bar
+      state.mouse.x = -1;
+      state.hover = null;
+      render();
+      updateLoupe();
+      return;
+    }
     state.mouse.x = e.clientX;
     state.mouse.y = e.clientY;
     const x = clamp(e.clientX, 0, vw());
@@ -202,7 +216,7 @@
   function onDown(e) {
     if (e.button === 2) { cancel(); return; }
     if (e.button !== 0) return;
-    if (e.target.closest('#toolbar')) return;
+    if (e.target.closest('#toolbar') || e.target.closest('#modebar')) return;
     const x = clamp(e.clientX, 0, vw());
     const y = clamp(e.clientY, 0, vh());
     el.hint.hidden = true;
@@ -234,7 +248,7 @@
         state.mode = 'idle';
         state.pendingWin = null;
         if (win) { confirm({ x: win.x, y: win.y, w: win.w, h: win.h }); return; }
-      } else if (init.instant) {
+      } else if (instant) {
         // Snip Area: releasing the mouse captures straight away, like the Windows Snipping Tool.
         if (confirm(rect())) return;
         state.mode = 'idle';
@@ -278,7 +292,7 @@
   window.addEventListener('keydown', onKey);
   window.addEventListener('contextmenu', (e) => { e.preventDefault(); });
   window.addEventListener('dblclick', (e) => {
-    if (e.target.closest('#toolbar')) return;
+    if (e.target.closest('#toolbar') || e.target.closest('#modebar')) return;
     if (state.mode === 'selected') confirm(rect());
   });
   document.addEventListener('mouseenter', () => api.activate());
@@ -296,6 +310,28 @@
   });
   $('btn-ok').addEventListener('click', () => { if (state.mode === 'selected') confirm(rect()); });
   $('btn-cancel').addEventListener('click', cancel);
+
+  // Scroll Capture continues in these overlays (main confirms with overlay:mode); the other modes end the session.
+  function leaveSnip(hint) {
+    instant = false;
+    modes = false;
+    document.body.classList.remove('modes');
+    el.hint.textContent = hint || '';
+    el.hint.hidden = !hint;
+    render();
+  }
+  api.onMode((m) => { if (m && !state.done) leaveSnip(m.hint); });
+  el.modebar.addEventListener('mousedown', (e) => e.preventDefault()); // keep keyboard focus off the buttons
+  el.modebar.addEventListener('click', (e) => {
+    const b = e.target.closest('button[data-mode]');
+    if (!b || !modes || state.done || state.mode !== 'idle') return;
+    const mode = b.dataset.mode;
+    if (mode === 'region') return;
+    if (mode === 'cancel') { cancel(); return; }
+    if (mode === 'scrolling') leaveSnip('');
+    else { state.done = true; render(); }
+    api.switchMode(mode);
+  });
 
   render();
   requestAnimationFrame(() => requestAnimationFrame(() => api.ready()));

@@ -83,12 +83,35 @@ const handlers = {
 
 let registered = false;
 
+// Removes a capture from the library and closes the editor window showing it. opts.confirm asks first.
+async function deleteItem(win, id, opts) {
+  if (opts && opts.confirm) {
+    const it = await store.get(id);
+    const res = await dialog.showMessageBox(win, {
+      type: 'warning',
+      title: 'Delete capture',
+      message: `Delete "${(it && it.name) || 'this capture'}"?`,
+      detail: 'It is removed from the library. This can\'t be undone.',
+      buttons: ['Delete', 'Cancel'],
+      defaultId: 0,
+      cancelId: 1,
+      noLink: true,
+    });
+    if (res.response !== 0) return false;
+  }
+  await store.remove(id);
+  if (win && !win.isDestroyed()) win.close();
+  return true;
+}
+
 function register() {
   for (const [name, fn] of Object.entries(handlers)) {
     const ch = 'editor:' + name;
     ipcMain.removeHandler(ch);
     ipcMain.handle(ch, (_e, ...args) => fn(...args));
   }
+  ipcMain.removeHandler('editor:deleteItem');
+  ipcMain.handle('editor:deleteItem', (e, id, opts) => deleteItem(BrowserWindow.fromWebContents(e.sender), id, opts));
   if (registered) ipcMain.removeAllListeners('editor:autosave');
   ipcMain.on('editor:autosave', async (_e, id, obj, dataURL) => {
     try {

@@ -11,5 +11,8 @@ contextBridge.exposeInMainWorld('overlayApi', {
   activate: () => ipcRenderer.send('overlay:activate'),
   confirm: (rect) => ipcRenderer.send('overlay:confirm', rect),
   cancel: () => ipcRenderer.send('overlay:cancel'),
+  // Snip Area mode bar: 'scrolling' | 'record' | 'fullscreen'.
+  switchMode: (mode) => ipcRenderer.send('overlay:switch', mode),
+  onMode: (cb) => ipcRenderer.on('overlay:mode', (_e, m) => cb(m)),
   onCountdown: (cb) => ipcRenderer.on('overlay:countdown', (_e, n) => cb(n)),
 });

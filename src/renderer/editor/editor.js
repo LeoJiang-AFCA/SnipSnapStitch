@@ -68,7 +68,7 @@
     sel: [], view: { z: 1, x: 0, y: 0 }, fitMode: true,
     drag: null, spaceDown: false, hover: null, hoverColor: null,
     editing: null, crop: null, cv: null,
-    history: null, docDirty: true, uiScale: 1, ready: false, saving: false
+    history: null, docDirty: true, uiScale: 1, ready: false, saving: false, deleting: false
   };
   const V = S.view;
 
@@ -1394,7 +1394,7 @@
   const annotations = () => M.serialize({ width: S.docW, height: S.docH, baseOps: S.baseOps, objects: S.objects });
 
   async function save(silent) {
-    if (!S.ready || S.saving) return;
+    if (!S.ready || S.saving || S.deleting) return;
     endEdit();
     S.saving = true;
     try {
@@ -1424,7 +1424,7 @@
   }
 
   async function copyImage() {
-    if (!S.ready) return;
+    if (!S.ready) return false;
     endEdit();
     try {
       if (!S.history.isDirty()) {
@@ -1435,8 +1435,25 @@
         await api.copyPixels(px.width, px.height, new Uint8Array(px.data.buffer));
       }
       toast('Copied to clipboard');
+      return true;
     } catch (err) {
       toast('Copy failed', true);
+      return false;
+    }
+  }
+
+  // Deletes the capture and closes the editor. With copyFirst the image (annotations included) goes to the clipboard
+  // first and nothing is asked; a plain delete asks for confirmation (in main). Main closes the window.
+  async function deleteCapture(copyFirst) {
+    if (!S.ready || S.deleting) return;
+    endEdit();
+    if (copyFirst && !(await copyImage())) return;
+    S.deleting = true; // no saving / autosave for a capture that is going away
+    try {
+      if (!(await api.deleteItem(S.id, { confirm: !copyFirst }))) S.deleting = false;
+    } catch (err) {
+      S.deleting = false;
+      toast('Delete failed', true);
     }
   }
 
@@ -1446,7 +1463,7 @@
   }
 
   function autosaveBeforeUnload() {
-    if (!S.ready || !S.history.isDirty()) return;
+    if (!S.ready || S.deleting || !S.history.isDirty()) return;
     try {
       endEdit();
       api.autosave(S.id, annotations(), flatten());
@@ -1456,7 +1473,7 @@
 
   window.addEventListener('beforeunload', autosaveBeforeUnload);
   window.addEventListener('blur', () => {
-    if (S.ready && S.history.isDirty()) save(true);
+    if (S.ready && !S.deleting && S.history.isDirty()) save(true);
   });
 
   // ---------- chrome ----------
@@ -1476,12 +1493,16 @@
     $('btnCopy').innerHTML = ICONS.copy + '<span>Copy</span>';
     $('btnSaveAs').innerHTML = ICONS.saveas + '<span>Save As</span>';
     $('btnSave').innerHTML = ICONS.save + '<span>Save</span>';
+    $('btnDelete').innerHTML = ICONS.trash;
+    $('btnCopyDelete').innerHTML = ICONS.copy + '<span>Copy &amp; Delete</span>';
     $('btnLibrary').addEventListener('click', () => api.openLibrary());
     $('btnUndo').addEventListener('click', undo);
     $('btnRedo').addEventListener('click', redo);
     $('btnCopy').addEventListener('click', copyImage);
     $('btnSave').addEventListener('click', () => save());
     $('btnSaveAs').addEventListener('click', saveAs);
+    $('btnDelete').addEventListener('click', () => deleteCapture(false));
+    $('btnCopyDelete').addEventListener('click', () => deleteCapture(true));
     $('btnZoomIn').addEventListener('click', () => zoomBy(1.25));
     $('btnZoomOut').addEventListener('click', () => zoomBy(0.8));
     $('btnFit').addEventListener('click', fit);

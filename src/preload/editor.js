@@ -15,6 +15,8 @@ contextBridge.exposeInMainWorld('editorApi', {
   copyPixels: (width, height, rgba) => invoke('copyPixels', width, height, rgba),
   saveAs: (dataURL, suggestedName) => invoke('saveAs', dataURL, suggestedName),
   openLibrary: () => invoke('openLibrary'),
+  // Removes the capture and closes this editor; opts.confirm asks first. Resolves false when not deleted.
+  deleteItem: (id, opts) => invoke('deleteItem', id, opts),
   // fire-and-forget; used while the window is closing
   autosave: (id, obj, dataURL) => ipcRenderer.send('editor:autosave', id, obj, dataURL)
 });

@@ -89,6 +89,25 @@ html, body {
   background: var(--panel); border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 999px;
   pointer-events: none; white-space: nowrap;
 }
+body.modes #hint { top: 72px; }
+
+#modebar {
+  position: fixed; left: 50%; top: 14px; transform: translateX(-50%); display: flex; align-items: center; gap: 4px;
+  padding: 5px; background: var(--panel); border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 10px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45); cursor: default;
+}
+#modebar button {
+  display: inline-flex; align-items: center; gap: 7px; font: inherit; font-size: 13px; color: var(--text);
+  background: transparent; border: 0; padding: 7px 12px; border-radius: 7px; cursor: pointer; white-space: nowrap;
+}
+#modebar button:hover { background: #3a4150; }
+#modebar button.active { background: var(--accent); color: #fff; cursor: default; }
+#modebar svg {
+  width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8;
+  stroke-linecap: round; stroke-linejoin: round;
+}
+#modebar .rec { fill: #ff5a5f; stroke: none; }
+#modebar .msep { width: 1px; height: 22px; background: rgba(255, 255, 255, 0.15); margin: 0 2px; }
 
 #countdown {
   position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 160px; height: 160px;

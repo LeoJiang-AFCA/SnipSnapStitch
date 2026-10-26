@@ -50,6 +50,11 @@ Library, overlay, recorder, scrollbar and settings windows are plain HTML/CSS/JS
   resource, no embedded asar hash; `app.getVersion()` still comes from `package.json`).
 - **Snip Area is release-to-capture** (`selectArea(..., { instant: true })`): mouse-up confirms, the PNG always goes to the
   clipboard, then `afterCapture` runs. Window capture, Scroll Capture and the recording area picker keep the confirm step.
+- **Snip Area mode bar** (`modes: true`): the overlay sends `overlay:switch` (`scrolling` | `record` | `fullscreen`) and
+  `selectArea` resolves `{ shot, switchTo }`. Scroll Capture re-arms the same overlays (`reselect` → `overlay:mode`) and runs
+  `scrollCapture` in the same session; Full Screen saves `shot.image`; Record starts `recorder.js` after the session ends.
+- **Editor delete** (`editor:deleteItem`): main asks for confirmation (plain Delete only), removes the item and closes the
+  window; the renderer sets `S.deleting` so neither blur-save nor the `beforeunload` autosave writes to the removed item.
 - Pan is the default editor tool: dragging empty canvas pans; clicking/dragging an annotation (or its handles) selects/moves it;
   other tools return to Pan on Esc.
 

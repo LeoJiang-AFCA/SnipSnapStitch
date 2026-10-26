@@ -27,6 +27,18 @@
     <div id="loupe-info"><span id="swatch"></span><span id="loupe-text"></span></div>
   </div>
   <div id="hint" hidden></div>
+  <div id="modebar" hidden>
+    <button data-mode="region" class="active" tabindex="-1" title="Drag to snip an area">
+      <svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="1" stroke-dasharray="3 2.6"/></svg>Snip Area</button>
+    <button data-mode="scrolling" tabindex="-1" title="Select an area, then scroll its content">
+      <svg viewBox="0 0 24 24"><rect x="6" y="3" width="12" height="18" rx="1.5"/><path d="M12 8v8M9 13l3 3 3-3"/></svg>Scroll Capture</button>
+    <button data-mode="record" tabindex="-1" title="Record a video of the screen">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><circle class="rec" cx="12" cy="12" r="3.5"/></svg>Record Video</button>
+    <button data-mode="fullscreen" tabindex="-1" title="Capture this whole screen">
+      <svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>Full Screen</button>
+    <span class="msep"></span>
+    <button data-mode="cancel" tabindex="-1" title="Cancel (Esc)">&#10005;</button>
+  </div>
   <div id="countdown" hidden></div>
   <script src="overlay.js"></script>
 </body>

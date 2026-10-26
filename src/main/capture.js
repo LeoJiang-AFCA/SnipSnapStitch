@@ -388,12 +388,9 @@ const HINTS = {
   scrolling: 'Select the area to scroll-capture, then press Enter \u00b7 you then scroll yourself or use Auto-scroll \u00b7 Esc to cancel',
 };
 
-// Shows one overlay per display and resolves { shot, rect } (rect in CSS px of that display) or null on cancel.
-// opts.instant: the selection is taken as soon as the mouse is released (no adjust/confirm step).
-async function selectArea(session, kind, shots, opts = {}) {
-  const windowLists = kind === 'window' ? await gatherWindows(shots) : shots.map(() => []);
-  if (session.cancelled) return null;
-  const target = nearestDisplay();
+// Arms the overlay selection: resolves with what overlay:confirm / overlay:switch report, or null on cancel.
+function armSelect(session) {
+  if (session.cancelled) return Promise.resolve(null);
   return new Promise((resolve) => {
     let settled = false;
     const finish = (v) => {
@@ -404,41 +401,71 @@ async function selectArea(session, kind, shots, opts = {}) {
     };
     activeSelect = { session, finish };
     session.onCancel(() => finish(null));
-    const infos = shots.map((shot, index) => {
-      const origin = physicalOrigin(shot.display);
-      const init = {
-        mode: 'select',
-        kind,
-        bitmap: shot.bitmap,
-        width: shot.width,
-        height: shot.height,
-        originX: origin.x,
-        originY: origin.y,
-        windows: windowLists[index],
-        instant: !!opts.instant,
-        hint: opts.instant ? HINTS.snip : HINTS[kind] || HINTS.region,
-      };
-      const info = createOverlayWindow(session, shot.display, init);
-      info.index = index;
-      info.shot = shot;
-      return info;
-    });
-    waitReady(session, infos).then((ok) => {
-      if (!ok) return session.cancel();
-      let focusWin = null;
-      for (const info of infos) {
-        if (info.shot.display.id === target.id) focusWin = info.win;
-        else info.win.showInactive();
-      }
-      const w = focusWin || infos[0].win;
-      w.show();
-      w.focus();
-    });
   });
 }
 
+// Shows one overlay per display and resolves { shot, rect } (rect in CSS px of that display) or null on cancel.
+// opts.instant: the selection is taken as soon as the mouse is released (no adjust/confirm step).
+// opts.modes: show the mode bar (Snip Area); picking another mode there resolves { shot, switchTo } instead.
+async function selectArea(session, kind, shots, opts = {}) {
+  const windowLists = kind === 'window' ? await gatherWindows(shots) : shots.map(() => []);
+  if (session.cancelled) return null;
+  const target = nearestDisplay();
+  const picked = armSelect(session);
+  const infos = shots.map((shot, index) => {
+    const origin = physicalOrigin(shot.display);
+    const init = {
+      mode: 'select',
+      kind,
+      bitmap: shot.bitmap,
+      width: shot.width,
+      height: shot.height,
+      originX: origin.x,
+      originY: origin.y,
+      windows: windowLists[index],
+      instant: !!opts.instant,
+      modes: !!opts.modes,
+      hint: opts.instant ? HINTS.snip : HINTS[kind] || HINTS.region,
+    };
+    const info = createOverlayWindow(session, shot.display, init);
+    info.index = index;
+    info.shot = shot;
+    info.modes = !!opts.modes;
+    return info;
+  });
+  waitReady(session, infos).then((ok) => {
+    if (!ok) return session.cancel();
+    let focusWin = null;
+    for (const info of infos) {
+      if (info.shot.display.id === target.id) focusWin = info.win;
+      else info.win.showInactive();
+    }
+    const w = focusWin || infos[0].win;
+    w.show();
+    w.focus();
+  });
+  return picked;
+}
+
+// Turns the open overlays into another kind of selection in place (same screenshot, no new windows): used when
+// Scroll Capture is picked on the Snip Area mode bar.
+function reselect(session, kind) {
+  const picked = armSelect(session);
+  for (const win of session.overlays) {
+    try {
+      if (win.isDestroyed()) continue;
+      const info = overlayInfo.get(win.webContents.id);
+      if (info) info.modes = false;
+      win.webContents.send('overlay:mode', { kind, hint: HINTS[kind] || HINTS.region });
+    } catch {}
+  }
+  return picked;
+}
+
+const SWITCH_MODES = new Set(['scrolling', 'record', 'fullscreen']);
+
 function registerOverlayIpc() {
-  for (const ch of ['overlay:loaded', 'overlay:ready', 'overlay:activate', 'overlay:confirm', 'overlay:cancel']) ipcMain.removeAllListeners(ch);
+  for (const ch of ['overlay:loaded', 'overlay:ready', 'overlay:activate', 'overlay:confirm', 'overlay:cancel', 'overlay:switch']) ipcMain.removeAllListeners(ch);
   ipcMain.on('overlay:loaded', (e) => {
     const info = overlayInfo.get(e.sender.id);
     if (info) info.loaded();
@@ -461,6 +488,11 @@ function registerOverlayIpc() {
   });
   ipcMain.on('overlay:cancel', (e) => {
     if (overlayInfo.has(e.sender.id) && activeSelect) activeSelect.session.cancel();
+  });
+  ipcMain.on('overlay:switch', (e, mode) => {
+    const info = overlayInfo.get(e.sender.id);
+    if (!info || !activeSelect || info.countdown || !info.modes || !SWITCH_MODES.has(mode)) return;
+    activeSelect.finish({ shot: info.shot, switchTo: mode });
   });
 }
 
@@ -489,19 +521,32 @@ function physicalRectOf(sel) {
 
 // ---- public capture functions ------------------------------------------------------------------------------------
 
-function captureArea(kind) {
+async function captureArea(kind) {
   // Snip Area works like the Windows Snipping Tool: releasing the mouse captures and the snip goes to the clipboard.
+  // Its overlay also has a mode bar to switch to Scroll Capture, Record Video or Full Screen instead.
   const snip = kind === 'region';
-  return withSession(async (session) => {
+  let startRecording = false;
+  const item = await withSession(async (session) => {
     if (!(await prepare(session))) return null;
     const shots = await grabAll(!!setting('captureCursor', false));
-    const sel = await selectArea(session, kind, shots, { instant: snip });
+    const sel = await selectArea(session, kind, shots, { instant: snip, modes: snip });
     if (!sel) return null;
+    if (sel.switchTo === 'scrolling') {
+      return scrollCapture(session, (warm) => { warm(); return reselect(session, 'scrolling'); });
+    }
     session.release();
+    // Full Screen uses the screenshot already taken of that display.
+    if (sel.switchTo === 'fullscreen') return finalize(sel.shot.image.toPNG(), 'fullscreen', { copy: true });
+    if (sel.switchTo === 'record') { startRecording = true; return null; }
     const r = physicalRectOf(sel);
     const png = sel.shot.image.crop({ x: r.x, y: r.y, width: r.w, height: r.h }).toPNG();
     return finalize(png, kind, { copy: snip });
   });
+  // The recorder runs its own capture session, so it starts once this one has ended.
+  if (startRecording) {
+    try { await require('./recorder').startRecording({}); } catch (err) { console.error('[capture] recorder failed:', err); }
+  }
+  return item;
 }
 
 const captureRegion = () => captureArea('region');
@@ -527,273 +572,282 @@ function captureFullscreen() {
 function captureScrolling() {
   return withSession(async (session) => {
     if (!(await prepare(session))) return null;
-    let finishRequested = false;
-    let wantAuto = false;
-    const canAuto = !!winbounds.available;
-    const ScrollUI = getScrollUI();
-    const FrameStream = getFrameStream();
-    const ui = new ScrollUI((action) => {
-      if (action === 'done') finishRequested = true;
-      else if (action === 'cancel') session.cancel();
-      else if (action === 'auto' && canAuto) wantAuto = !wantAuto;
-    });
-    let enterRegistered = false;
-    let savedCursor = null;
-    try {
+    return scrollCapture(session, async (warm) => {
       const shots = await grabAll(false);
-      // Start the heavy helpers while the user is still choosing the area.
+      warm();
+      return selectArea(session, 'scrolling', shots);
+    });
+  });
+}
+
+// The scrolling capture inside an open session. pickArea(warm) resolves the selected area like selectArea; it calls
+// warm() to start the heavy helpers while the user is still choosing the area.
+async function scrollCapture(session, pickArea) {
+  let finishRequested = false;
+  let wantAuto = false;
+  const canAuto = !!winbounds.available;
+  const ScrollUI = getScrollUI();
+  const FrameStream = getFrameStream();
+  const ui = new ScrollUI((action) => {
+    if (action === 'done') finishRequested = true;
+    else if (action === 'cancel') session.cancel();
+    else if (action === 'auto' && canAuto) wantAuto = !wantAuto;
+  });
+  let enterRegistered = false;
+  let savedCursor = null;
+  try {
+    const sel = await pickArea(() => {
       FrameStream.prewarm().catch(() => {});
       if (winbounds.available) winbounds.warmUp();
-      const sel = await selectArea(session, 'scrolling', shots);
-      if (!sel) return null;
-      session.closeOverlays(); // keep the app's own windows hidden while scrolling
-      session.onCancel(() => ui.close());
-      const display = sel.shot.display;
-      const rect = physicalRectOf(sel);
-      const b = display.bounds;
-      await ui.present({ x: b.x + sel.rect.x, y: b.y + sel.rect.y, w: sel.rect.w, h: sel.rect.h }, b);
-      if (session.cancelled) return null;
-      try { enterRegistered = globalShortcut.register('Enter', () => { finishRequested = true; }); } catch {}
+    });
+    if (!sel || !sel.rect) return null;
+    session.closeOverlays(); // keep the app's own windows hidden while scrolling
+    session.onCancel(() => ui.close());
+    const display = sel.shot.display;
+    const rect = physicalRectOf(sel);
+    const b = display.bounds;
+    await ui.present({ x: b.x + sel.rect.x, y: b.y + sel.rect.y, w: sel.rect.w, h: sel.rect.h }, b);
+    if (session.cancelled) return null;
+    try { enterRegistered = globalShortcut.register('Enter', () => { finishRequested = true; }); } catch {}
 
-      // Live frames from a screen stream when possible (far quicker than polling thumbnails, so fast scrolling is
-      // followed too); otherwise poll desktopCapturer.
-      const stream = new FrameStream(display, rect, physicalSize(display));
-      const streaming = await stream.start();
-      if (session.cancelled) { stream.stop(); return null; }
-      // The screen stream draws the mouse pointer into every frame. `box` is where it sits (frame pixels), so the
-      // stitcher can replace those rows with clean copies from a neighbouring frame.
-      const pxPerDip = physicalSize(display).w / b.width;
-      const tagCursor = (f) => {
-        if (f && f.box === undefined) {
-          f.box = null;
-          if (f.cursor) {
-            const k = f.width / rect.w;
-            const ps = pxPerDip * k;
-            const px = ((f.cursor.x - b.x) * pxPerDip - rect.x) * k;
-            const py = ((f.cursor.y - b.y) * pxPerDip - rect.y) * k;
-            const box = {
-              x0: Math.max(0, Math.floor(px - 20 * ps)), x1: Math.min(f.width, Math.ceil(px + 36 * ps)),
-              y0: Math.max(0, Math.floor(py - 20 * ps)), y1: Math.min(f.height, Math.ceil(py + 36 * ps)),
-            };
-            if (box.x1 > box.x0 && box.y1 > box.y0) f.box = box;
-          }
+    // Live frames from a screen stream when possible (far quicker than polling thumbnails, so fast scrolling is
+    // followed too); otherwise poll desktopCapturer.
+    const stream = new FrameStream(display, rect, physicalSize(display));
+    const streaming = await stream.start();
+    if (session.cancelled) { stream.stop(); return null; }
+    // The screen stream draws the mouse pointer into every frame. `box` is where it sits (frame pixels), so the
+    // stitcher can replace those rows with clean copies from a neighbouring frame.
+    const pxPerDip = physicalSize(display).w / b.width;
+    const tagCursor = (f) => {
+      if (f && f.box === undefined) {
+        f.box = null;
+        if (f.cursor) {
+          const k = f.width / rect.w;
+          const ps = pxPerDip * k;
+          const px = ((f.cursor.x - b.x) * pxPerDip - rect.x) * k;
+          const py = ((f.cursor.y - b.y) * pxPerDip - rect.y) * k;
+          const box = {
+            x0: Math.max(0, Math.floor(px - 20 * ps)), x1: Math.min(f.width, Math.ceil(px + 36 * ps)),
+            y0: Math.max(0, Math.floor(py - 20 * ps)), y1: Math.min(f.height, Math.ceil(py + 36 * ps)),
+          };
+          if (box.x1 > box.x0 && box.y1 > box.y0) f.box = box;
         }
-        return f;
+      }
+      return f;
+    };
+    const grabFrame = streaming
+      ? async () => tagCursor(await stream.next(150))
+      : async () => {
+        const s = await grabDisplay(display, false);
+        const img = s.image.crop({ x: rect.x, y: rect.y, width: rect.w, height: rect.h });
+        const size = img.getSize();
+        return { data: img.toBitmap(), width: size.width, height: size.height };
       };
-      const grabFrame = streaming
-        ? async () => tagCursor(await stream.next(150))
-        : async () => {
-          const s = await grabDisplay(display, false);
-          const img = s.image.crop({ x: rect.x, y: rect.y, width: rect.w, height: rect.h });
-          const size = img.getSize();
-          return { data: img.toBitmap(), width: size.width, height: size.height };
-        };
-      const pollMs = streaming ? 20 : 120;
-      const stable = async (frame) => {
-        let f = frame || (await grabFrame());
-        for (let i = 0; i < 4 && !session.cancelled; i++) {
-          await session.sleep(streaming ? 80 : 130);
-          const g = await grabFrame();
-          if (g === f || g.data.equals(f.data)) return g;
-          f = g;
+    const pollMs = streaming ? 20 : 120;
+    const stable = async (frame) => {
+      let f = frame || (await grabFrame());
+      for (let i = 0; i < 4 && !session.cancelled; i++) {
+        await session.sleep(streaming ? 80 : 130);
+        const g = await grabFrame();
+        if (g === f || g.data.equals(f.data)) return g;
+        f = g;
+      }
+      return f;
+    };
+
+    await session.sleep(300);
+    let first = await grabFrame();
+    if (streaming) first = tagCursor(await stream.next(100)) || first; // skip any frame drawn before the helper windows settled
+    const stitcher = new util.ScrollStitcher(first);
+    let count = 1;
+    let prev = first;
+    let total = first.height;
+    let zoneH = first.height;
+    let hint = Math.round(first.height * 0.3);
+    const origin = physicalOrigin(display);
+    const cx = origin.x + rect.x + Math.floor(rect.w / 2);
+    let cy = origin.y + rect.y + Math.floor(rect.h / 2);
+    const status = (msg, level) => ui.setStatus({ mode: wantAuto ? 'auto' : 'manual', frames: count, height: total, canAuto, msg, level });
+    const MANUAL_MSG = 'Scroll the content yourself' + (canAuto ? ', or press Auto-scroll' : '') + '. Click Done when finished.';
+    const stop = () => session.cancelled || finishRequested;
+    status(MANUAL_MSG);
+
+    // Compares `frame` with the last kept frame and, if the content scrolled, keeps it. Rows that did not move
+    // (fixed header, status bar, sticky rows) are detected first and left out of the comparison, so only the part
+    // that really scrolls is used to measure the offset. Returns the detection result. `lost` stays set while the
+    // newest frame could not be joined to the picture, i.e. the content moved on without being captured.
+    let lost = false;
+    const overlays = []; // measured heights of a scroll bar drawn over the bottom of the content
+    let overlay = 0;
+    const append = (frame, force) => {
+      const r = appendFrame(frame, force);
+      if (r.ok || r.identical) lost = false;
+      else if (!r.noZone) lost = true;
+      return r;
+    };
+    const appendFrame = (frame, force) => {
+      if (util.sameIgnoringBoxes(prev, frame)) return { ok: true, identical: true, dy: 0 };
+      const st = util.staticRows(prev, frame);
+      if (st.top >= frame.height) return { ok: true, identical: true, dy: 0 };
+      let bottom = st.bottom + overlay;
+      zoneH = frame.height - st.top - bottom;
+      if (zoneH < MIN_ZONE_ROWS) return { ok: false, identical: false, dy: 0, noZone: true };
+      const a = util.zoneView(prev, st.top, bottom);
+      const b = util.zoneView(frame, st.top, bottom);
+      const h0 = Math.min(hint, zoneH - 1);
+      // Small steps are by far the most common (and quick to check); only search the whole range if they fail.
+      let r = util.detectScrollOffset(a, b, { hint: h0, maxDy: Math.max(48, Math.round(zoneH * 0.3)) });
+      if (!r.ok && !r.identical) r = util.detectScrollOffset(a, b, { hint: h0 });
+      if (r.ok && !r.identical && r.dy > 0) {
+        // Wait until the content has moved a worthwhile distance (the final pass keeps whatever is left). With the
+        // pointer in the picture the step must also be taller than the pointer, so it can be painted out.
+        const boxH = frame.box ? frame.box.y1 - frame.box.y0 : 0;
+        const minStep = Math.min(Math.max(6, zoneH * 0.08, boxH * 1.1), zoneH * 0.4);
+        if (!force && r.dy < minStep) return { ...r, deferred: true };
+        // A scroll bar floating over the bottom of the text must not be stitched in again and again: treat the rows
+        // under it like a footer (it is then shown once, at the end).
+        const ov = util.overlayRows(a, b, r.dy);
+        if (ov || overlays.length) {
+          overlays.push(overlay + (ov ? ov + 2 : 0));
+          const m = Math.round(util.median(overlays.slice(-9)));
+          overlay = Math.min(m, Math.floor(zoneH * 0.15));
+          bottom = st.bottom + overlay;
         }
-        return f;
-      };
+        stitcher.add(frame, r.dy, bottom, st.top);
+        count++;
+        total = stitcher.height;
+        prev = frame;
+        hint = r.dy;
+        cy = origin.y + rect.y + st.top + Math.floor(zoneH / 2);
+      }
+      return r;
+    };
 
-      await session.sleep(300);
-      let first = await grabFrame();
-      if (streaming) first = tagCursor(await stream.next(100)) || first; // skip any frame drawn before the helper windows settled
-      const stitcher = new util.ScrollStitcher(first);
-      let count = 1;
-      let prev = first;
-      let total = first.height;
-      let zoneH = first.height;
-      let hint = Math.round(first.height * 0.3);
-      const origin = physicalOrigin(display);
-      const cx = origin.x + rect.x + Math.floor(rect.w / 2);
-      let cy = origin.y + rect.y + Math.floor(rect.h / 2);
-      const status = (msg, level) => ui.setStatus({ mode: wantAuto ? 'auto' : 'manual', frames: count, height: total, canAuto, msg, level });
-      const MANUAL_MSG = 'Scroll the content yourself' + (canAuto ? ', or press Auto-scroll' : '') + '. Click Done when finished.';
-      const stop = () => session.cancelled || finishRequested;
-      status(MANUAL_MSG);
-
-      // Compares `frame` with the last kept frame and, if the content scrolled, keeps it. Rows that did not move
-      // (fixed header, status bar, sticky rows) are detected first and left out of the comparison, so only the part
-      // that really scrolls is used to measure the offset. Returns the detection result. `lost` stays set while the
-      // newest frame could not be joined to the picture, i.e. the content moved on without being captured.
-      let lost = false;
-      const overlays = []; // measured heights of a scroll bar drawn over the bottom of the content
-      let overlay = 0;
-      const append = (frame, force) => {
-        const r = appendFrame(frame, force);
-        if (r.ok || r.identical) lost = false;
-        else if (!r.noZone) lost = true;
-        return r;
-      };
-      const appendFrame = (frame, force) => {
-        if (util.sameIgnoringBoxes(prev, frame)) return { ok: true, identical: true, dy: 0 };
-        const st = util.staticRows(prev, frame);
-        if (st.top >= frame.height) return { ok: true, identical: true, dy: 0 };
-        let bottom = st.bottom + overlay;
-        zoneH = frame.height - st.top - bottom;
-        if (zoneH < MIN_ZONE_ROWS) return { ok: false, identical: false, dy: 0, noZone: true };
-        const a = util.zoneView(prev, st.top, bottom);
-        const b = util.zoneView(frame, st.top, bottom);
-        const h0 = Math.min(hint, zoneH - 1);
-        // Small steps are by far the most common (and quick to check); only search the whole range if they fail.
-        let r = util.detectScrollOffset(a, b, { hint: h0, maxDy: Math.max(48, Math.round(zoneH * 0.3)) });
-        if (!r.ok && !r.identical) r = util.detectScrollOffset(a, b, { hint: h0 });
-        if (r.ok && !r.identical && r.dy > 0) {
-          // Wait until the content has moved a worthwhile distance (the final pass keeps whatever is left). With the
-          // pointer in the picture the step must also be taller than the pointer, so it can be painted out.
-          const boxH = frame.box ? frame.box.y1 - frame.box.y0 : 0;
-          const minStep = Math.min(Math.max(6, zoneH * 0.08, boxH * 1.1), zoneH * 0.4);
-          if (!force && r.dy < minStep) return { ...r, deferred: true };
-          // A scroll bar floating over the bottom of the text must not be stitched in again and again: treat the rows
-          // under it like a footer (it is then shown once, at the end).
-          const ov = util.overlayRows(a, b, r.dy);
-          if (ov || overlays.length) {
-            overlays.push(overlay + (ov ? ov + 2 : 0));
-            const m = Math.round(util.median(overlays.slice(-9)));
-            overlay = Math.min(m, Math.floor(zoneH * 0.15));
-            bottom = st.bottom + overlay;
+    let notches = 2;
+    let endStuck = 0;
+    let autoFails = 0;
+    let autoActive = false;
+    const probes = [0.5, 0.8, 0.25];
+    let probe = 0;
+    let tried = null;
+    try {
+      while (!stop() && total < SCROLL_MAX_HEIGHT) {
+        let frame;
+        if (wantAuto) {
+          if (!autoActive) {
+            savedCursor = await winbounds.getCursor().catch(() => null);
+            autoActive = true;
+            status('Auto-scrolling\u2026 click Pause or Done to stop.');
           }
-          stitcher.add(frame, r.dy, bottom, st.top);
-          count++;
-          total = stitcher.height;
-          prev = frame;
-          hint = r.dy;
-          cy = origin.y + rect.y + st.top + Math.floor(zoneH / 2);
-        }
-        return r;
-      };
-
-      let notches = 2;
-      let endStuck = 0;
-      let autoFails = 0;
-      let autoActive = false;
-      const probes = [0.5, 0.8, 0.25];
-      let probe = 0;
-      let tried = null;
-      try {
-        while (!stop() && total < SCROLL_MAX_HEIGHT) {
-          let frame;
-          if (wantAuto) {
-            if (!autoActive) {
-              savedCursor = await winbounds.getCursor().catch(() => null);
-              autoActive = true;
-              status('Auto-scrolling\u2026 click Pause or Done to stop.');
-            }
-            await winbounds.wheel(cx, cy, -120 * notches);
-            // Take the pointer out of the picture again; the page keeps scrolling by itself.
-            if (savedCursor) await winbounds.moveCursor(savedCursor.x, savedCursor.y).catch(() => {});
-            await session.sleep(350);
-            if (stop()) break;
-            frame = await stable();
-          } else {
-            if (autoActive) {
-              autoActive = false;
-              if (savedCursor) await winbounds.moveCursor(savedCursor.x, savedCursor.y).catch(() => {});
-              status(MANUAL_MSG);
-            }
-            await session.sleep(pollMs);
-            if (stop()) break;
-            frame = await grabFrame();
-            if (frame === prev || frame.data.equals(prev.data) || util.sameIgnoringBoxes(prev, frame)) {
-              // Back at the last captured position (e.g. after "scroll back up"): nothing is missing any more.
-              lost = false;
-              continue;
-            }
-            if (frame === tried) continue;
-            tried = frame;
-          }
+          await winbounds.wheel(cx, cy, -120 * notches);
+          // Take the pointer out of the picture again; the page keeps scrolling by itself.
+          if (savedCursor) await winbounds.moveCursor(savedCursor.x, savedCursor.y).catch(() => {});
+          await session.sleep(350);
           if (stop()) break;
-          const r = append(frame);
-          if (r.identical) {
-            if (wantAuto) {
-              if (++endStuck >= 2) {
-                if (count === 1 && ++probe < probes.length) {
-                  // Nothing moved yet: the pointer may be over a fixed part of the area, so try another spot.
-                  cy = origin.y + rect.y + Math.floor(rect.h * probes[probe]);
-                  endStuck = 0;
-                  continue;
-                }
-                status('Reached the end of the content.');
-                finishRequested = true;
-                break;
-              }
-              await session.sleep(500);
-            }
+          frame = await stable();
+        } else {
+          if (autoActive) {
+            autoActive = false;
+            if (savedCursor) await winbounds.moveCursor(savedCursor.x, savedCursor.y).catch(() => {});
+            status(MANUAL_MSG);
+          }
+          await session.sleep(pollMs);
+          if (stop()) break;
+          frame = await grabFrame();
+          if (frame === prev || frame.data.equals(prev.data) || util.sameIgnoringBoxes(prev, frame)) {
+            // Back at the last captured position (e.g. after "scroll back up"): nothing is missing any more.
+            lost = false;
             continue;
           }
-          endStuck = 0;
-          if (r.noZone) {
-            status('Could not find a scrolling part in the selected area.', 'warn');
-            if (wantAuto) wantAuto = false;
-          } else if (r.ok) {
-            autoFails = 0;
-            if (wantAuto) notches = util.nextNotches(notches, r.dy, zoneH);
-            status(wantAuto ? 'Auto-scrolling\u2026 click Pause or Done to stop.' : MANUAL_MSG);
-          } else if (wantAuto) {
-            if (++autoFails <= 3) {
-              // Scrolled further than the area is tall: go back and take smaller steps.
-              await winbounds.wheel(cx, cy, 120 * notches);
-              if (savedCursor) await winbounds.moveCursor(savedCursor.x, savedCursor.y).catch(() => {});
-              await session.sleep(450);
-              notches = Math.max(1, Math.floor(notches / 2));
-            } else {
-              wantAuto = false;
-              status('Auto-scroll lost track of the content \u2014 scroll manually, or click Done.', 'warn');
+          if (frame === tried) continue;
+          tried = frame;
+        }
+        if (stop()) break;
+        const r = append(frame);
+        if (r.identical) {
+          if (wantAuto) {
+            if (++endStuck >= 2) {
+              if (count === 1 && ++probe < probes.length) {
+                // Nothing moved yet: the pointer may be over a fixed part of the area, so try another spot.
+                cy = origin.y + rect.y + Math.floor(rect.h * probes[probe]);
+                endStuck = 0;
+                continue;
+              }
+              status('Reached the end of the content.');
+              finishRequested = true;
+              break;
             }
+            await session.sleep(500);
+          }
+          continue;
+        }
+        endStuck = 0;
+        if (r.noZone) {
+          status('Could not find a scrolling part in the selected area.', 'warn');
+          if (wantAuto) wantAuto = false;
+        } else if (r.ok) {
+          autoFails = 0;
+          if (wantAuto) notches = util.nextNotches(notches, r.dy, zoneH);
+          status(wantAuto ? 'Auto-scrolling\u2026 click Pause or Done to stop.' : MANUAL_MSG);
+        } else if (wantAuto) {
+          if (++autoFails <= 3) {
+            // Scrolled further than the area is tall: go back and take smaller steps.
+            await winbounds.wheel(cx, cy, 120 * notches);
+            if (savedCursor) await winbounds.moveCursor(savedCursor.x, savedCursor.y).catch(() => {});
+            await session.sleep(450);
+            notches = Math.max(1, Math.floor(notches / 2));
           } else {
-            status('Scrolled too fast, or the content changed. Scroll back up to where the last line captured is visible.', 'warn');
+            wantAuto = false;
+            status('Auto-scroll lost track of the content \u2014 scroll manually, or click Done.', 'warn');
           }
+        } else {
+          status('Scrolled too fast, or the content changed. Scroll back up to where the last line captured is visible.', 'warn');
         }
-        if (total >= SCROLL_MAX_HEIGHT) status('Maximum capture height reached.', 'warn');
-        if (finishRequested && !session.cancelled) {
-          // Pick up whatever finished scrolling just before Done was clicked.
-          await session.sleep(250);
-          // A frame caught mid-animation can fail to join; give the settled picture a couple more tries.
-          for (let i = 0; i < 3 && !session.cancelled; i++) {
-            const r = append(await stable(), true);
-            if (r.ok || r.identical) break;
-            await session.sleep(200);
-          }
+      }
+      if (total >= SCROLL_MAX_HEIGHT) status('Maximum capture height reached.', 'warn');
+      if (finishRequested && !session.cancelled) {
+        // Pick up whatever finished scrolling just before Done was clicked.
+        await session.sleep(250);
+        // A frame caught mid-animation can fail to join; give the settled picture a couple more tries.
+        for (let i = 0; i < 3 && !session.cancelled; i++) {
+          const r = append(await stable(), true);
+          if (r.ok || r.identical) break;
+          await session.sleep(200);
         }
-      } catch (err) {
-        console.warn('[capture] scrolling stopped:', err.message);
-      } finally {
-        stream.stop();
-        if (savedCursor && autoActive) await winbounds.moveCursor(savedCursor.x, savedCursor.y).catch(() => {});
       }
-
-      if (session.cancelled) return null;
-      ui.close();
-      session.release();
-      // The fixed footer (status bar, panel header...) is kept once, at the end; fixed side columns once, at the top.
-      const out = stitcher.finish();
-      const png = nativeImage.createFromBitmap(out.data, { width: out.width, height: out.height }).toPNG();
-      const item = await finalize(png, 'scrolling');
-      const problems = [];
-      if (lost) problems.push('The content scrolled past the last captured part before you clicked Done, so the end of the page is missing.');
-      if (stitcher.gapRows > 0) problems.push('Some content was scrolled past too quickly and is missing from the image.');
-      if (total >= SCROLL_MAX_HEIGHT) problems.push('The maximum capture height was reached, so the rest of the page is not included.');
-      if (problems.length) {
-        await dialog.showMessageBox({
-          type: 'warning',
-          title: 'Scrolling capture incomplete',
-          message: 'The stitched image is not fully complete because the scrolling jumped over part of the screen.',
-          detail: problems.join('\n\n') + '\n\nScroll more slowly and capture again.',
-          buttons: ['OK'],
-        }).catch(() => {});
-      }
-      return item;
+    } catch (err) {
+      console.warn('[capture] scrolling stopped:', err.message);
     } finally {
-      if (enterRegistered) { try { globalShortcut.unregister('Enter'); } catch {} }
-      ui.close();
-      FrameStream.discardSpare(); // an unused pre-warmed host (e.g. cancelled selection) must not linger
+      stream.stop();
+      if (savedCursor && autoActive) await winbounds.moveCursor(savedCursor.x, savedCursor.y).catch(() => {});
     }
-  });
+
+    if (session.cancelled) return null;
+    ui.close();
+    session.release();
+    // The fixed footer (status bar, panel header...) is kept once, at the end; fixed side columns once, at the top.
+    const out = stitcher.finish();
+    const png = nativeImage.createFromBitmap(out.data, { width: out.width, height: out.height }).toPNG();
+    const item = await finalize(png, 'scrolling');
+    const problems = [];
+    if (lost) problems.push('The content scrolled past the last captured part before you clicked Done, so the end of the page is missing.');
+    if (stitcher.gapRows > 0) problems.push('Some content was scrolled past too quickly and is missing from the image.');
+    if (total >= SCROLL_MAX_HEIGHT) problems.push('The maximum capture height was reached, so the rest of the page is not included.');
+    if (problems.length) {
+      await dialog.showMessageBox({
+        type: 'warning',
+        title: 'Scrolling capture incomplete',
+        message: 'The stitched image is not fully complete because the scrolling jumped over part of the screen.',
+        detail: problems.join('\n\n') + '\n\nScroll more slowly and capture again.',
+        buttons: ['OK'],
+      }).catch(() => {});
+    }
+    return item;
+  } finally {
+    if (enterRegistered) { try { globalShortcut.unregister('Enter'); } catch {} }
+    ui.close();
+    FrameStream.discardSpare(); // an unused pre-warmed host (e.g. cancelled selection) must not linger
+  }
 }
 
 /**

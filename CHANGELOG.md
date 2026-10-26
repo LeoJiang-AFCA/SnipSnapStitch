@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 
 ## [Unreleased]
 
+### Added
+- **Mode bar on Snip Area** (e.g. Print Screen): Snip Area · Scroll Capture · Record Video · Full Screen · ✕ at the top of
+  the screen. Scroll Capture continues in the same overlay (no new screenshot), Full Screen saves the screen as it was when
+  the snip started (and copies it), Record Video opens the recorder. Nothing extra loads until a mode is picked.
+- **Editor: Copy & Delete** (now the highlighted button) copies the image, annotations included, to the clipboard, deletes
+  the capture and closes the editor; **Delete** (bin icon) deletes it after a confirmation.
+
 ### Changed
 - **Installer instead of the portable exe.** `SnipSnapStitch-Setup-<version>.exe` is a one-click, per-user install (no admin)
   into `%LOCALAPPDATA%\Programs\snipsnapstitch`. The portable exe re-extracted ~340 MB to a temp folder on every launch

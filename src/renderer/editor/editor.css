@@ -36,6 +36,8 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .tb.sm { min-width: 26px; padding: 0; font-size: 16px; }
 .tb.accent { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
 .tb.accent:hover:not(:disabled) { background: var(--accent-2); }
+.tb.danger:hover:not(:disabled) { background: var(--danger); border-color: var(--danger); color: #fff; }
+@media (max-width: 1100px) { .tb.collapse span { display: none; } }
 #zoomBox { display: flex; align-items: center; gap: 4px; }
 #zoomLabel { min-width: 48px; text-align: center; color: var(--text); font-variant-numeric: tabular-nums; }
 

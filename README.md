@@ -9,14 +9,16 @@ video, then annotate and organise everything in a built-in library. Everything r
 
 ## Features
 - **Snip Area** – drag to capture any region (multi-monitor and DPI aware). Like the Windows Snipping Tool, releasing the
-  mouse captures, copies the snip to the clipboard and opens the editor.
+  mouse captures, copies the snip to the clipboard and opens the editor. A bar at the top of the screen switches to
+  Scroll Capture, Record Video or Full Screen instead (handy with the Print Screen key).
 - **Scroll Capture** – manual scroll or auto-scroll; frames are stitched into one tall image. Handles sticky headers/footers,
   fixed sidebars/minimaps, removes the mouse pointer, and warns when content might be missing. Design notes: [docs/SCROLL-CAPTURE.md](docs/SCROLL-CAPTURE.md).
 - **Record Video** – screen or region to WebM, pause/resume, optional GIF export, optional "optimize to smaller MP4".
 - **Full Screen** capture.
 - **Library** – thumbnail grid with tags, favourites, search and rename.
 - **Editor** – arrow, line, rectangle, ellipse, text, callout, step badges, stamps, highlighter, pen, blur, spotlight, magnify,
-  eyedropper, crop, canvas size, undo/redo, zoom and pan.
+  eyedropper, crop, canvas size, undo/redo, zoom and pan. **Copy & Delete** (the default button) puts the image on the
+  clipboard and discards the capture; **Delete** discards it.
 - Tray icon, global hotkeys, *Start with Windows* (on by default), optional *Use Print Screen key for SnipSnapStitch*.
 
 | Action | Default hotkey |
