@@ -1512,10 +1512,15 @@
   }
 
   // ---------- init ----------
-  async function init() {
+  function init() {
     buildTopbar();
     buildToolbar();
     const id = new URLSearchParams(location.search).get('id');
+    if (id) load(id);
+    else api.onOpen(load); // pre-loaded spare editor: main sends the item id when a capture is opened
+  }
+
+  async function load(id) {
     S.id = id;
     try {
       S.item = await api.getItem(id);
@@ -1552,6 +1557,7 @@
     } catch (err) {
       $('loading').textContent = 'Could not open this item: ' + (err && err.message ? err.message : err);
     }
+    api.ready();
   }
 
   new ResizeObserver(() => {

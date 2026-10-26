@@ -114,6 +114,8 @@ function register() {
   }
   ipcMain.removeHandler('editor:deleteItem');
   ipcMain.handle('editor:deleteItem', (e, id, opts) => deleteItem(BrowserWindow.fromWebContents(e.sender), id, opts));
+  if (registered) ipcMain.removeAllListeners('editor:ready');
+  ipcMain.on('editor:ready', (e) => require('./windows').editorReady(BrowserWindow.fromWebContents(e.sender)));
   if (registered) ipcMain.removeAllListeners('editor:autosave');
   ipcMain.on('editor:autosave', async (_e, id, obj, dataURL) => {
     try {

@@ -3,6 +3,7 @@ const path = require('path');
 const { app, BrowserWindow, desktopCapturer, screen, ipcMain, clipboard, nativeImage, globalShortcut, dialog } = require('electron');
 const util = require('./capture-util');
 const winbounds = require('./winbounds');
+const perf = require('./perf');
 const { keepTransparent } = require('./transparent');
 
 // Scroll-capture helpers are loaded on first use, so a plain region snip never pays for them.
@@ -370,6 +371,7 @@ function createOverlayWindow(session, display, init, opts = {}) {
 
 let warming = false;
 let warmTimer = null;
+let poolMarked = false;
 
 // Spawns the reserve overlay windows one at a time (each start-up is slow and they would otherwise compete with the
 // window the user is waiting for). Only the region-capture overlays are kept warm; scroll-capture helpers are started on demand.
@@ -383,10 +385,12 @@ async function warmUp() {
         const info = spawnOverlay();
         pool.push(info);
         await Promise.race([info.loadedPromise, new Promise((r) => setTimeout(r, 6000).unref())]);
+        if (!poolMarked) { poolMarked = true; perf.mark('first overlay pre-loaded'); }
       } catch (err) { console.error('[capture] overlay pool:', err); break; }
     }
     if (nativeShots === undefined && !busy) {
       nativeCapture(); // first load of the native module takes ~0.5 s, so it is done while idle
+      perf.mark('native capture loaded');
     }
   } finally {
     warming = false;
@@ -496,6 +500,7 @@ async function selectArea(session, kind, shots, opts = {}) {
     const w = focusWin || infos[0].win;
     w.show();
     w.focus();
+    perf.step('overlay on screen');
   });
   return picked;
 }
@@ -554,9 +559,11 @@ function registerOverlayIpc() {
 // opts.copy: always put the image on the clipboard (Snip Area), whatever the settings say.
 async function finalize(png, source, opts = {}) {
   const item = await getStore().addCapture(png, { source });
+  perf.step('saved to library');
   const after = setting('afterCapture', 'editor');
   if (opts.copy || setting('copyToClipboard', false) || after === 'clipboard') {
     try { clipboard.writeImage(nativeImage.createFromBuffer(png)); } catch (err) { console.error('[capture] clipboard failed:', err); }
+    perf.step('copied to clipboard');
   }
   try {
     if (after === 'editor') getWindows().openEditor(item.id);
@@ -580,10 +587,14 @@ async function captureArea(kind) {
   const snip = kind === 'region';
   let startRecording = false;
   const item = await withSession(async (session) => {
+    perf.begin(snip ? 'snip' : kind);
     if (!(await prepare(session))) return null;
+    perf.step('app windows hidden');
     const shots = await grabAll(!!setting('captureCursor', false));
+    perf.step(`screen grabbed (${shots.length} display(s))`);
     const sel = await selectArea(session, kind, shots, { instant: snip, modes: snip });
     if (!sel) return null;
+    perf.begin('after-selection');
     if (sel.switchTo === 'scrolling') {
       return scrollCapture(session, (warm) => { warm(); return reselect(session, 'scrolling'); });
     }
@@ -593,6 +604,7 @@ async function captureArea(kind) {
     if (sel.switchTo === 'record') { startRecording = true; return null; }
     const r = physicalRectOf(sel);
     const png = sel.shot.image.crop({ x: r.x, y: r.y, width: r.w, height: r.h }).toPNG();
+    perf.step('cropped and PNG-encoded');
     return finalize(png, kind, { copy: snip });
   });
   // The recorder runs its own capture session, so it starts once this one has ended.
@@ -607,8 +619,10 @@ const captureWindow = () => captureArea('window');
 
 function captureFullscreen() {
   return withSession(async (session) => {
+    perf.begin('fullscreen');
     if (!(await prepare(session))) return null;
     const shot = await grabDisplay(nearestDisplay(), !!setting('captureCursor', false));
+    perf.step('screen grabbed');
     if (session.cancelled) return null;
     session.release();
     return finalize(shot.image.toPNG(), 'fullscreen');

@@ -17,6 +17,10 @@ contextBridge.exposeInMainWorld('editorApi', {
   openLibrary: () => invoke('openLibrary'),
   // Removes the capture and closes this editor; opts.confirm asks first. Resolves false when not deleted.
   deleteItem: (id, opts) => invoke('deleteItem', id, opts),
+  // A pre-loaded (hidden) editor is handed its item by main; cb(id) runs once.
+  onOpen: cb => ipcRenderer.once('editor:open', (_e, id) => cb(String(id))),
+  // The item is loaded: main shows the window.
+  ready: () => ipcRenderer.send('editor:ready'),
   // fire-and-forget; used while the window is closing
   autosave: (id, obj, dataURL) => ipcRenderer.send('editor:autosave', id, obj, dataURL)
 });

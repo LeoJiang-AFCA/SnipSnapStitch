@@ -15,6 +15,8 @@ if (!app.commandLine.hasSwitch('user-data-dir')) {
 }
 app.setName('SnipSnapStitch');
 app.setAppUserModelId('com.snipsnapstitch.app');
+const perf = require('./perf');
+perf.mark('main script');
 
 // All our windows load local pages, so let them share one renderer process: opening the editor or recorder then skips
 // a process spawn (about 2x faster on this machine) and idle memory roughly halves. SSS_ISOLATED=1 turns this off.
@@ -67,6 +69,7 @@ function applyLoginItem() {
 }
 
 app.whenReady().then(() => {
+  perf.mark('app ready');
   registerIpc();
   library.register();
   require('./editor-ipc').register();
@@ -79,6 +82,9 @@ app.whenReady().then(() => {
   applyLoginItem();
   settings.events.on('changed', applyLoginItem);
   if (!process.argv.includes('--hidden')) windows.openLibrary();
+  // Keep an editor loaded in the background when captures open in it (the default); it is replaced after each use.
+  if ((settings.get('afterCapture') || 'editor') === 'editor') windows.prewarmEditor(10000);
+  perf.mark('tray and hotkeys ready');
 });
 
 // Keep running in the tray when all windows are closed.
