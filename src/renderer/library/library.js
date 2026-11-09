@@ -309,7 +309,8 @@
         h('div', { class: 'muted' }, 'Re-encodes the video in the background. This takes a little while (roughly a third of the video length) and replaces the original file.'),
         h('div', { class: 'choices' },
           opt('balanced', 'Smaller, same look', 'Usually 5–10× smaller; text stays sharp.'),
-          opt('smallest', 'Smallest', 'Even smaller; limited to 1280 px and slightly softer.')),
+          opt('smallest', 'Smallest', 'Even smaller; limited to 1280 px and slightly softer.'),
+          opt('tiny', 'Extremely small', 'About a quarter of the size or less; 854 px, low frame rate, noticeably soft.')),
         h('div', { class: 'row' }, h('button', { class: 'btn', onclick: () => finish(null) }, 'Cancel'))));
       $('#modal').onmousedown = (e) => { if (e.target === $('#modal')) finish(null); };
     });

@@ -2,7 +2,7 @@
 // Recorder preferences: defaults, validation and on-disk migration (no Electron dependency).
 const fs = require('fs');
 
-const DEFAULTS = { mode: 'screen', fps: 15, audio: true, mic: false, countdown: true, highlightCursor: false, optimize: true, displayId: null, windowId: null };
+const DEFAULTS = { mode: 'screen', fps: 15, audio: true, mic: false, countdown: true, highlightCursor: false, optimize: true, tiny: false, displayId: null, windowId: null };
 const PREFS_VERSION = 3;
 const FPS_OPTIONS = [15, 20, 30, 60];
 
@@ -22,8 +22,8 @@ function load(file) {
 
 function save(file, o) {
   try {
-    const { mode, fps, audio, mic, countdown, highlightCursor, optimize } = o;
-    fs.writeFileSync(file, JSON.stringify({ v: PREFS_VERSION, mode, fps, audio, mic, countdown, highlightCursor, optimize }));
+    const { mode, fps, audio, mic, countdown, highlightCursor, optimize, tiny } = o;
+    fs.writeFileSync(file, JSON.stringify({ v: PREFS_VERSION, mode, fps, audio, mic, countdown, highlightCursor, optimize, tiny }));
   } catch (e) { /* non-fatal */ }
 }
 
@@ -36,6 +36,7 @@ function normalize(o) {
   r.countdown = r.countdown === true || (typeof r.countdown === 'number' && r.countdown > 0);
   r.highlightCursor = !!r.highlightCursor;
   r.optimize = !!r.optimize;
+  r.tiny = r.tiny === true;
   return r;
 }
 

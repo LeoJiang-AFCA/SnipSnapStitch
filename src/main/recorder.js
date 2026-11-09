@@ -676,9 +676,10 @@ function register() {
     lastItem = await getStore().addMedia(u8(p.buffer), {
       ext: 'webm', source: 'recording', width: p.width, height: p.height, thumbBuffer: u8(p.thumb),
     });
-    if (lastItem && state.opts && state.opts.optimize) {
+    // "Extremely small" always re-encodes, even if the normal optimize option is off.
+    if (lastItem && state.opts && (state.opts.optimize || state.opts.tiny)) {
       try {
-        require('./video-optimizer').optimize(lastItem.id, { preset: 'balanced', fps: state.opts.fps, durationMs: p.durationMs, notify: true });
+        require('./video-optimizer').optimize(lastItem.id, { preset: state.opts.tiny ? 'tiny' : 'balanced', fps: state.opts.fps, durationMs: p.durationMs, notify: true });
       } catch (e) { console.error('[recorder] optimize failed to start', e); }
     }
     return { id: lastItem && lastItem.id, durationMs: p.durationMs };

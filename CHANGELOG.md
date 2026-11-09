@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) 
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-11-09
+
+### Added
+- **"Extremely small file" video option** in the recording setup (off by default). After recording, the video is re-encoded
+  at up to 854 px, 8 fps, low quality and mono 32 kbps audio, typically a quarter of the normal optimized size or less. It
+  also appears as "Extremely small" in the library's "Make video smaller" dialog.
+
+### Removed
+- The "Scrolling capture incomplete" popup after scroll capture (mostly false alarms). A possible gap is now only logged.
+
 ## [1.0.0] - 2026-10-26
 
 First stable release.

@@ -24,6 +24,9 @@ test('frame rate is capped at 30 and the preset decides crf', () => {
   const b = opt.buildArgs('in.webm', 'out.mp4', { preset: 'smallest', fps: 15 });
   assert.ok(b.join(' ').includes('fps=15'));
   assert.strictEqual(b[b.indexOf('-crf') + 1], '33');
+  const c = opt.buildArgs('in.webm', 'out.mp4', { preset: 'tiny', fps: 30 });
+  assert.ok(c.join(' ').includes('fps=8'));
+  assert.strictEqual(c[c.indexOf('-crf') + 1], '40');
 });
 
 test('an input that is really a playlist is not followed to other files', () => {
@@ -41,7 +44,7 @@ test('an input that is really a playlist is not followed to other files', () => 
   }
 });
 
-for (const [preset, size, maxW] of [['balanced', '321x241', 321], ['smallest', '1921x1081', 1280]]) {
+for (const [preset, size, maxW] of [['balanced', '321x241', 321], ['smallest', '1921x1081', 1280], ['tiny', '1921x1081', 854]]) {
   test(`ffmpeg re-encodes a ${size} source with the ${preset} preset to even dimensions`, () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'rs-opt-'));
     try {

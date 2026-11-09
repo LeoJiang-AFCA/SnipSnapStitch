@@ -16,6 +16,9 @@ const events = new EventEmitter(); // 'progress' {id, progress}, 'done' {id, bef
 const PRESETS = {
   balanced: { crf: 28, maxSide: 0 }, // looks the same, much smaller
   smallest: { crf: 33, maxSide: 1280 }, // visibly softer, smallest
+  // Extreme size reduction (about a quarter of "balanced" or less): low resolution and frame rate, mono low-rate
+  // audio and a very slow encode. Text becomes soft; meant for sharing where size matters more than looks.
+  tiny: { crf: 40, maxSide: 854, maxFps: 8, x264: 'veryslow', audioKbps: 32, mono: true },
 };
 const MIN_GAIN = 0.9; // keep the result only if it is under 90% of the original size
 // Inputs are opened with the demuxer their extension implies and from local files only, so a library file whose
@@ -33,7 +36,7 @@ function ffmpegPath() {
 
 function buildArgs(input, output, opts = {}) {
   const preset = PRESETS[opts.preset] || PRESETS.balanced;
-  const fps = Math.max(5, Math.min(30, Math.round(opts.fps || 30)));
+  const fps = Math.max(5, Math.min(preset.maxFps || 30, Math.round(opts.fps || 30)));
   // Even dimensions are required by yuv420p; maxSide optionally scales the longer side down.
   const filters = [`fps=${fps}`];
   if (preset.maxSide) {
@@ -47,8 +50,8 @@ function buildArgs(input, output, opts = {}) {
     '-hide_banner', '-nostdin', '-y', '-protocol_whitelist', 'file', '-f', format, '-i', input,
     '-map', '0:v:0', '-map', '0:a:0?',
     '-vf', filters.join(','),
-    '-c:v', 'libx264', '-preset', 'medium', '-crf', String(preset.crf), '-pix_fmt', 'yuv420p',
-    '-c:a', 'aac', '-b:a', '96k',
+    '-c:v', 'libx264', '-preset', preset.x264 || 'medium', '-crf', String(preset.crf), '-pix_fmt', 'yuv420p',
+    '-c:a', 'aac', '-b:a', (preset.audioKbps || 96) + 'k', ...(preset.mono ? ['-ac', '1'] : []),
     '-movflags', '+faststart',
     '-progress', 'pipe:1', '-nostats',
     output,
@@ -140,7 +143,7 @@ async function pump() {
 }
 
 /**
- * Queues a video for optimization. opts: { preset: 'balanced'|'smallest', fps, durationMs }.
+ * Queues a video for optimization. opts: { preset: 'balanced'|'smallest'|'tiny', fps, durationMs }.
  * Returns false if it is already queued/running.
  */
 function optimize(id, opts = {}) {

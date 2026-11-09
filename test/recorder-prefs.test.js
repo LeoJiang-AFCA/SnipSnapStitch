@@ -13,6 +13,7 @@ test('defaults are 15 fps with optimize-when-finished on', () => {
   assert.equal(n.fps, 15);
   assert.equal(n.optimize, true);
   assert.equal(n.mode, 'screen');
+  assert.equal(n.tiny, false);
 });
 
 test('normalize rejects bad values and coerces types', () => {

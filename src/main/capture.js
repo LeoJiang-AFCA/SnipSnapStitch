@@ -1,6 +1,6 @@
 'use strict';
 const path = require('path');
-const { app, BrowserWindow, desktopCapturer, screen, ipcMain, clipboard, nativeImage, globalShortcut, dialog } = require('electron');
+const { app, BrowserWindow, desktopCapturer, screen, ipcMain, clipboard, nativeImage, globalShortcut } = require('electron');
 const util = require('./capture-util');
 const winbounds = require('./winbounds');
 const perf = require('./perf');
@@ -900,15 +900,8 @@ async function scrollCapture(session, pickArea) {
     if (lost) problems.push('The content scrolled past the last captured part before you clicked Done, so the end of the page is missing.');
     if (stitcher.gapRows > 0) problems.push('Some content was scrolled past too quickly and is missing from the image.');
     if (total >= SCROLL_MAX_HEIGHT) problems.push('The maximum capture height was reached, so the rest of the page is not included.');
-    if (problems.length) {
-      await dialog.showMessageBox({
-        type: 'warning',
-        title: 'Scrolling capture incomplete',
-        message: 'The stitched image is not fully complete because the scrolling jumped over part of the screen.',
-        detail: problems.join('\n\n') + '\n\nScroll more slowly and capture again.',
-        buttons: ['OK'],
-      }).catch(() => {});
-    }
+    // No popup: these warnings were mostly false alarms, so they are only logged.
+    if (problems.length) console.warn('[capture] scrolling capture may be incomplete:', problems.join(' '));
     return item;
   } finally {
     if (enterRegistered) { try { globalShortcut.unregister('Enter'); } catch {} }

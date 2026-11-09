@@ -15,7 +15,7 @@ Code: `src\main\capture.js` (session loop, `captureScrolling`), `capture-util.js
 4. `ScrollStitcher` (in `capture-util.js`) assembles: first frame whole, then for each frame rows `[covered−dy, h − median(footers) − SEAM_MARGIN)`; `finish()` appends the last frame's footer once. `gapRows` counts rows scrolled past between two frames without ever being seen.
 5. Fixed columns: `_trackColumns` (columns that never change) and `_trackAligned` (columns that change but don't follow the scroll, e.g. minimap) → `fixedColumns()` returns `{left,right}`; those bands are shown once at the top with per-column fill colour below.
 6. Cursor: each frame carries `box` (pointer rect). Strips get patch records copying clean rows from the neighbouring frame, applied in `finish()` outside fixed bands. In auto mode the pointer is parked outside the area after each wheel event.
-7. After `finalize`, a warning dialog ("Scrolling capture incomplete") appears if `lost` (content moved past the last captured part before Done), `gapRows > 0`, or max height (20000 physical px) was reached.
+7. After `finalize`, if `lost` (content moved past the last captured part before Done), `gapRows > 0`, or max height (20000 physical px) was reached, a warning is only logged to the console (the former "Scrolling capture incomplete" popup was removed because it was mostly a false alarm).
 
 ## Findings worth remembering
 - Video stream is lossy (I420 chroma subsampling): the footer boundary row blends with content → `SEAM_MARGIN = 3`. Constrain stream `min/max` width/height exactly or Chromium rescales (2254 vs 2256 px).

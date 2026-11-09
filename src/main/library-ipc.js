@@ -160,7 +160,7 @@ function register() {
     let started = 0;
     for (const id of ids(arg)) {
       const it = await store.get(id);
-      if (it && it.type === 'video' && optimizer.optimize(id, { preset: preset === 'smallest' ? 'smallest' : 'balanced' })) started++;
+      if (it && it.type === 'video' && optimizer.optimize(id, { preset: ['smallest', 'tiny'].includes(preset) ? preset : 'balanced' })) started++;
     }
     return started;
   });

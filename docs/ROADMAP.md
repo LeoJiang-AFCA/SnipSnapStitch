@@ -3,8 +3,8 @@
 Contributions welcome — comment on or open an issue before starting anything large.
 
 ## Needs verification / known issues
-- **False "Scrolling capture incomplete" warning** after a slow manual scroll + Done (see the last section of
-  [SCROLL-CAPTURE.md](SCROLL-CAPTURE.md)). Needs diagnostics and a tighter `lost` rule.
+- The "Scrolling capture incomplete" popup was removed (mostly false alarms; now only logged). The underlying `lost`
+  rule could still be tightened (see the last section of [SCROLL-CAPTURE.md](SCROLL-CAPTURE.md)).
 - Verify on real machines: the "Use Print Screen key" option, "Start with Windows" (installed app), and the installer
   end-to-end (install/update/uninstall, tray, scroll capture, record, optimizer).
 - Check the icon at 16/32 px in the tray/taskbar (`tools/build-icon.py`: crop `BOX`, glow fade).

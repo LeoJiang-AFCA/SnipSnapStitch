@@ -10,7 +10,7 @@
   const views = {
     setup() {
       $('setup').hidden = false;
-      const s = { mode: 'screen', fps: 15, audio: true, mic: false, countdown: true, highlightCursor: false, optimize: true, displayId: null, windowId: null };
+      const s = { mode: 'screen', fps: 15, audio: true, mic: false, countdown: true, highlightCursor: false, optimize: true, tiny: false, displayId: null, windowId: null };
       let displays = [];
 
       function render() {
@@ -23,7 +23,9 @@
         $('opt-mic').checked = s.mic;
         $('opt-countdown').checked = s.countdown;
         $('opt-halo').checked = s.highlightCursor;
-        $('opt-optimize').checked = s.optimize;
+        $('opt-optimize').checked = s.optimize || s.tiny;
+        $('opt-optimize').disabled = s.tiny;
+        $('opt-tiny').checked = s.tiny;
       }
 
       async function loadWindows() {
@@ -63,6 +65,7 @@
       $('opt-countdown').onchange = (e) => { s.countdown = e.target.checked; };
       $('opt-halo').onchange = (e) => { s.highlightCursor = e.target.checked; };
       $('opt-optimize').onchange = (e) => { s.optimize = e.target.checked; };
+      $('opt-tiny').onchange = (e) => { s.tiny = e.target.checked; render(); };
       $('display-sel').onchange = (e) => { s.displayId = Number(e.target.value); };
       $('window-refresh').onclick = loadWindows;
 
